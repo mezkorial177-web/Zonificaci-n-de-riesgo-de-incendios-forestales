@@ -223,11 +223,7 @@ La Consulta 2 es la más costosa: además del escaneo completo, agrega una
 etapa `SORT` independiente que ordena en memoria los 4,114 documentos
 resultantes (`totalDataSizeSorted: 1,208,922` bytes). Esto evidencia que
 un índice sobre `fecha_hora` no solo evitaría el `COLLSCAN`, sino también
-el ordenamiento en memoria — el patrón clásico Equality-Sort-Range (ESR)
-a aplicar en el diseño de índices (3.4): un índice compuesto
-`{ categoria: 1, fecha_hora: 1 }` cubre la igualdad de `categoria` y
-permite que el mismo orden del índice sirva para el `sort()` sin
-necesidad de una etapa `SORT` aparte.
+el ordenamiento en memoria
 
 Las consultas 1 y 3 usan la misma forma (`categoria` + `$geoWithin`
 sobre `ubicacion`), solo cambia el polígono de la zona. Esto confirma
