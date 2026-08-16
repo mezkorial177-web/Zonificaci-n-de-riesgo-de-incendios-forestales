@@ -231,4 +231,89 @@ que el índice `2dsphere` que se diseñe sirve por igual para las 15 zonas
 de `carteras`, no solo para la zona usada en esta medición.
 
 
+# Estrategia de indexación
+
+**Sección:** 3.4 de la guía de avance, semana 2
+**Base:** `riesgo_catastrofico`, colección `eventos_desastres`
+
+Se proponen dos índices — la menor cantidad razonable para cubrir los
+tres patrones de consulta definidos en 3.2 (ver `01_punto_partida.md` y
+`02_medicion_inicial.md`).
+
+## Índice 1 — Compuesto `categoria` + `fecha_hora`
+
+| Punto | Detalle |
+|---|---|
+| **Patrón y nombre** | `{ categoria: 1, fecha_hora: 1 }`, nombre `idx_categoria_fecha` |
+| **Consulta que apoya** | Consulta 2: igualdad en `categoria` + rango en `fecha_hora` + `sort(fecha_hora)` |
+| **Orden de campos** | `categoria` primero (igualdad), `fecha_hora` después (rango + ordenamiento). Patrón ESR (Equality-Sort-Range): como el campo de rango y el de sort coinciden (`fecha_hora`), el índice resuelve ambos sin necesitar una etapa `SORT` aparte. |
+| **Reutilización de prefijo** | Sí. Una consulta que solo filtre `{ categoria: "Wildfires" }` sin fecha puede usar el prefijo `{ categoria: 1 }` de este mismo índice. |
+| **¿Multikey?** | No. Ni `categoria` ni `fecha_hora` son arreglos. |
+| **Costo esperado** | Bajo. Colección de 5,393 documentos; `categoria` tiene solo 4 valores distintos por sí sola, pero combinada con `fecha_hora` discrimina bien. Costo de escritura/almacenamiento marginal frente al beneficio de eliminar `COLLSCAN` + `SORT`. |
+
+## Índice 2 — Geoespacial `2dsphere` sobre `ubicacion`
+
+| Punto | Detalle |
+|---|---|
+| **Patrón y nombre** | `{ ubicacion: "2dsphere" }`, nombre `idx_ubicacion_2dsphere` |
+| **Consulta que apoya** | Consultas 1 y 3: `$geoWithin` sobre las 15 zonas de `carteras`, y futuras `$geoNear`/`$geoIntersects` |
+| **Orden de campos** | Un solo campo, no aplica orden compuesto. |
+| **Reutilización de prefijo** | No aplica (índice de un solo campo). |
+| **¿Multikey?** | No en el sentido de arreglos — `ubicacion` es un único `Point`. Internamente `2dsphere` usa una estructura de geohash, pero es detalle de implementación, no "multikey por arreglo". |
+| **Costo esperado** | Más alto que un B-tree simple (construcción y mantenimiento de la estructura de geohash), pero justificado: el componente geoespacial es requisito central del proyecto (semana 3), y sin este índice las 15 consultas por zona seguirían haciendo `COLLSCAN`. |
+
+## Comandos ejecutados
+
+```javascript
+use riesgo_catastrofico
+
+db.eventos_desastres.createIndex(
+  { categoria: 1, fecha_hora: 1 },
+  { name: "idx_categoria_fecha" }
+)
+
+db.eventos_desastres.createIndex(
+  { ubicacion: "2dsphere" },
+  { name: "idx_ubicacion_2dsphere" }
+)
+
+db.eventos_desastres.getIndexes()
+```
+
+## Evidencia — `getIndexes()`
+
+```javascript
+[
+        {
+                "v" : 2,
+                "key" : {
+                        "_id" : 1
+                },
+                "name" : "_id_"
+        },
+        {
+                "v" : 2,
+                "key" : {
+                        "categoria" : 1,
+                        "fecha_hora" : 1
+                },
+                "name" : "idx_categoria_fecha"
+        },
+        {
+                "v" : 2,
+                "key" : {
+                        "ubicacion" : "2dsphere"
+                },
+                "name" : "idx_ubicacion_2dsphere",
+                "2dsphereIndexVersion" : 3
+        }
+]
+```
+
+Los dos índices quedaron creados correctamente (`numIndexesAfter: 3`,
+contando el índice `_id_` por defecto). Confirmado con `getIndexes()`:
+`idx_categoria_fecha` con las claves y orden diseñados, e
+`idx_ubicacion_2dsphere` con `2dsphereIndexVersion: 3`.
+
+
 
