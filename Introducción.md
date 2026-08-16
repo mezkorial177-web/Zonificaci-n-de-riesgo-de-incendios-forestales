@@ -8,7 +8,7 @@ Las aseguradoras de propiedad necesitan decidir en qué zonas geográficas
 aceptar, restringir la suscripción de pólizas contra incendio,
 pero esa decisión suele basarse en información histórica dispersa o
 desactualizada. Este proyecto construye una base documental que cruza el
-historial real de eventos de incendio forestal (NASA EONET, 2002-2025) con
+historial real de eventos de incendio forestal (NASA EONET, 2023-2025) con
 una cartera de pólizas por zona geográfica, para responder qué tan
 concentrado está el riesgo de incendio en relación con la exposición
 asegurada actual.
@@ -28,7 +28,7 @@ subexpuesta o sobreexpuesta.
    (frecuencia normalizada por exposición), en lugar de solo el conteo
    bruto de eventos?
 3. ¿Existe una tendencia en el número de incendios a lo largo de los años
-   (2002-2025) dentro de las zonas de mayor exposición asegurada, que
+   (2023-2025) dentro de las zonas de mayor exposición asegurada, que
    sugiera un incremento del riesgo?
 4. ¿Hay estacionalidad mensual en la ocurrencia de incendios dentro de las
    zonas con mayor cartera, relevante para renovaciones o vigencias
