@@ -125,3 +125,7 @@ Scripts de transformación y carga reproducibles:
   `eventos_desastres.json`.
   (histórico de cambios de polígono) si el alcance del proyecto lo
   justifica — por ahora, fuera de alcance.
+
+
+  # 3.2 Seleccionar y describir los patrones de consulta
+
