@@ -123,14 +123,5 @@ Scripts de transformación y carga reproducibles:
   fuente.
 - `generate_carteras.py` — genera `carteras.json` a partir de
   `eventos_desastres.json`.
-
-## Decisiones pendientes
-
-- Definir el patrón exacto de `$lookup` + `$geoWithin` para vincular
-  ambas colecciones (siguiente paso).
-- Confirmar si se requiere un índice compuesto adicional sobre
-  `categoria` + `fecha_hora` para las consultas temporales de la
-  pregunta 3 y 4.
-- Evaluar si conviene una colección adicional de metadatos de zona
   (histórico de cambios de polígono) si el alcance del proyecto lo
   justifica — por ahora, fuera de alcance.
