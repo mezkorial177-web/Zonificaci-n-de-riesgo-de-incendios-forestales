@@ -234,16 +234,5 @@ sobre `ubicacion`), solo cambia el polígono de la zona. Esto confirma
 que el índice `2dsphere` que se diseñe sirve por igual para las 15 zonas
 de `carteras`, no solo para la zona usada en esta medición.
 
-## Nota de datos detectada durante esta medición
-
-Al construir la Consulta 2 se detectó que la categoría **Wildfires**
-solo tiene cobertura consistente a partir de 2022 (1 evento en 2022, 19
-en 2023, 4,114 en 2024, 1,184 hasta julio 2025), a diferencia del rango
-2002-2025 del dataset completo. Esto ya se corrigió en
-`01_punto_partida.md` y ajustó la pregunta 3 del proyecto (ver ese
-documento). Se documenta aquí también porque fue precisamente esta
-medición inicial la que expuso el problema, antes de construir cualquier
-índice o conclusión sobre tendencia.
-
 
 
