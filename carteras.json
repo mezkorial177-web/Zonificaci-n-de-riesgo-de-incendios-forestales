@@ -1,0 +1,542 @@
+[
+  {
+    "_id": "zona_01",
+    "nombre": "África central (Angola/RDC/Zambia)",
+    "poligono": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [
+            15,
+            -15
+          ],
+          [
+            30,
+            -15
+          ],
+          [
+            30,
+            0
+          ],
+          [
+            15,
+            0
+          ],
+          [
+            15,
+            -15
+          ]
+        ]
+      ]
+    },
+    "polizas_activas": 1060,
+    "suma_asegurada_usd": 190800000,
+    "eventos_wildfire_historicos": 619,
+    "sintetico": true,
+    "nota": "Exposición generada para fines académicos; no representa datos reales de una aseguradora."
+  },
+  {
+    "_id": "zona_02",
+    "nombre": "EUA centro-sur (Texas/Oklahoma)",
+    "poligono": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [
+            -105,
+            30
+          ],
+          [
+            -90,
+            30
+          ],
+          [
+            -90,
+            45
+          ],
+          [
+            -105,
+            45
+          ],
+          [
+            -105,
+            30
+          ]
+        ]
+      ]
+    },
+    "polizas_activas": 1046,
+    "suma_asegurada_usd": 188280000,
+    "eventos_wildfire_historicos": 393,
+    "sintetico": true,
+    "nota": "Exposición generada para fines académicos; no representa datos reales de una aseguradora."
+  },
+  {
+    "_id": "zona_03",
+    "nombre": "EUA suroeste (California/Nevada/Arizona)",
+    "poligono": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [
+            -120,
+            30
+          ],
+          [
+            -105,
+            30
+          ],
+          [
+            -105,
+            45
+          ],
+          [
+            -120,
+            45
+          ],
+          [
+            -120,
+            30
+          ]
+        ]
+      ]
+    },
+    "polizas_activas": 905,
+    "suma_asegurada_usd": 162900000,
+    "eventos_wildfire_historicos": 369,
+    "sintetico": true,
+    "nota": "Exposición generada para fines académicos; no representa datos reales de una aseguradora."
+  },
+  {
+    "_id": "zona_04",
+    "nombre": "Amazonía norte (Brasil)",
+    "poligono": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [
+            -60,
+            -15
+          ],
+          [
+            -45,
+            -15
+          ],
+          [
+            -45,
+            0
+          ],
+          [
+            -60,
+            0
+          ],
+          [
+            -60,
+            -15
+          ]
+        ]
+      ]
+    },
+    "polizas_activas": 1013,
+    "suma_asegurada_usd": 182340000,
+    "eventos_wildfire_historicos": 341,
+    "sintetico": true,
+    "nota": "Exposición generada para fines académicos; no representa datos reales de una aseguradora."
+  },
+  {
+    "_id": "zona_05",
+    "nombre": "Amazonía sur (Brasil/Paraguay)",
+    "poligono": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [
+            -60,
+            -30
+          ],
+          [
+            -45,
+            -30
+          ],
+          [
+            -45,
+            -15
+          ],
+          [
+            -60,
+            -15
+          ],
+          [
+            -60,
+            -30
+          ]
+        ]
+      ]
+    },
+    "polizas_activas": 1630,
+    "suma_asegurada_usd": 293400000,
+    "eventos_wildfire_historicos": 270,
+    "sintetico": true,
+    "nota": "Exposición generada para fines académicos; no representa datos reales de una aseguradora."
+  },
+  {
+    "_id": "zona_06",
+    "nombre": "Australia este",
+    "poligono": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [
+            135,
+            -30
+          ],
+          [
+            150,
+            -30
+          ],
+          [
+            150,
+            -15
+          ],
+          [
+            135,
+            -15
+          ],
+          [
+            135,
+            -30
+          ]
+        ]
+      ]
+    },
+    "polizas_activas": 1688,
+    "suma_asegurada_usd": 303840000,
+    "eventos_wildfire_historicos": 269,
+    "sintetico": true,
+    "nota": "Exposición generada para fines académicos; no representa datos reales de una aseguradora."
+  },
+  {
+    "_id": "zona_07",
+    "nombre": "Sahel (Chad/RCA)",
+    "poligono": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [
+            15,
+            0
+          ],
+          [
+            30,
+            0
+          ],
+          [
+            30,
+            15
+          ],
+          [
+            15,
+            15
+          ],
+          [
+            15,
+            0
+          ]
+        ]
+      ]
+    },
+    "polizas_activas": 1188,
+    "suma_asegurada_usd": 213840000,
+    "eventos_wildfire_historicos": 256,
+    "sintetico": true,
+    "nota": "Exposición generada para fines académicos; no representa datos reales de una aseguradora."
+  },
+  {
+    "_id": "zona_08",
+    "nombre": "Australia oeste",
+    "poligono": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [
+            120,
+            -30
+          ],
+          [
+            135,
+            -30
+          ],
+          [
+            135,
+            -15
+          ],
+          [
+            120,
+            -15
+          ],
+          [
+            120,
+            -30
+          ]
+        ]
+      ]
+    },
+    "polizas_activas": 1120,
+    "suma_asegurada_usd": 201600000,
+    "eventos_wildfire_historicos": 244,
+    "sintetico": true,
+    "nota": "Exposición generada para fines académicos; no representa datos reales de una aseguradora."
+  },
+  {
+    "_id": "zona_09",
+    "nombre": "África austral (Zimbabue/Botsuana)",
+    "poligono": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [
+            15,
+            -30
+          ],
+          [
+            30,
+            -30
+          ],
+          [
+            30,
+            -15
+          ],
+          [
+            15,
+            -15
+          ],
+          [
+            15,
+            -30
+          ]
+        ]
+      ]
+    },
+    "polizas_activas": 1175,
+    "suma_asegurada_usd": 211500000,
+    "eventos_wildfire_historicos": 209,
+    "sintetico": true,
+    "nota": "Exposición generada para fines académicos; no representa datos reales de una aseguradora."
+  },
+  {
+    "_id": "zona_10",
+    "nombre": "EUA sureste",
+    "poligono": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [
+            -90,
+            30
+          ],
+          [
+            -75,
+            30
+          ],
+          [
+            -75,
+            45
+          ],
+          [
+            -90,
+            45
+          ],
+          [
+            -90,
+            30
+          ]
+        ]
+      ]
+    },
+    "polizas_activas": 1606,
+    "suma_asegurada_usd": 289080000,
+    "eventos_wildfire_historicos": 193,
+    "sintetico": true,
+    "nota": "Exposición generada para fines académicos; no representa datos reales de una aseguradora."
+  },
+  {
+    "_id": "zona_11",
+    "nombre": "África oriental (Tanzania/Kenia)",
+    "poligono": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [
+            30,
+            -15
+          ],
+          [
+            45,
+            -15
+          ],
+          [
+            45,
+            0
+          ],
+          [
+            30,
+            0
+          ],
+          [
+            30,
+            -15
+          ]
+        ]
+      ]
+    },
+    "polizas_activas": 1109,
+    "suma_asegurada_usd": 199620000,
+    "eventos_wildfire_historicos": 175,
+    "sintetico": true,
+    "nota": "Exposición generada para fines académicos; no representa datos reales de una aseguradora."
+  },
+  {
+    "_id": "zona_12",
+    "nombre": "EUA/Canadá noroeste Pacífico",
+    "poligono": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [
+            -120,
+            45
+          ],
+          [
+            -105,
+            45
+          ],
+          [
+            -105,
+            60
+          ],
+          [
+            -120,
+            60
+          ],
+          [
+            -120,
+            45
+          ]
+        ]
+      ]
+    },
+    "polizas_activas": 1317,
+    "suma_asegurada_usd": 237060000,
+    "eventos_wildfire_historicos": 172,
+    "sintetico": true,
+    "nota": "Exposición generada para fines académicos; no representa datos reales de una aseguradora."
+  },
+  {
+    "_id": "zona_13",
+    "nombre": "Perú/Brasil (Amazonía oeste)",
+    "poligono": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [
+            -75,
+            -15
+          ],
+          [
+            -60,
+            -15
+          ],
+          [
+            -60,
+            0
+          ],
+          [
+            -75,
+            0
+          ],
+          [
+            -75,
+            -15
+          ]
+        ]
+      ]
+    },
+    "polizas_activas": 1265,
+    "suma_asegurada_usd": 227700000,
+    "eventos_wildfire_historicos": 138,
+    "sintetico": true,
+    "nota": "Exposición generada para fines académicos; no representa datos reales de una aseguradora."
+  },
+  {
+    "_id": "zona_14",
+    "nombre": "Siberia/Mongolia",
+    "poligono": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [
+            105,
+            45
+          ],
+          [
+            120,
+            45
+          ],
+          [
+            120,
+            60
+          ],
+          [
+            105,
+            60
+          ],
+          [
+            105,
+            45
+          ]
+        ]
+      ]
+    },
+    "polizas_activas": 1671,
+    "suma_asegurada_usd": 300780000,
+    "eventos_wildfire_historicos": 129,
+    "sintetico": true,
+    "nota": "Exposición generada para fines académicos; no representa datos reales de una aseguradora."
+  },
+  {
+    "_id": "zona_15",
+    "nombre": "EUA costa oeste (Pacífico)",
+    "poligono": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [
+            -135,
+            30
+          ],
+          [
+            -120,
+            30
+          ],
+          [
+            -120,
+            45
+          ],
+          [
+            -135,
+            45
+          ],
+          [
+            -135,
+            30
+          ]
+        ]
+      ]
+    },
+    "polizas_activas": 2258,
+    "suma_asegurada_usd": 406440000,
+    "eventos_wildfire_historicos": 127,
+    "sintetico": true,
+    "nota": "Exposición generada para fines académicos; no representa datos reales de una aseguradora."
+  }
+]
