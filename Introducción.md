@@ -127,5 +127,29 @@ Scripts de transformación y carga reproducibles:
   justifica — por ahora, fuera de alcance.
 
 
-  # Describir los patrones de consulta
+ ## 5. Consultas principales
+
+### Consulta 1 — Frecuencia histórica por zona (preguntas 1 y 5)
+
+* **Pregunta que responde:** ¿En qué zonas se concentra la actividad de incendios, y cuáles tienen actividad significativa pero no cartera asignada?
+* **Campos usados:** `categoria` (igualdad: `"Wildfires"`), `ubicacion` (relación espacial contra el polígono de cada zona — esto se resuelve en 3.6, no aquí).
+* **Ordenamiento:** Ninguno todavía a este nivel (se agrega tras agrupar).
+* **¿Consulta arreglo?** No.
+* **Por qué se ejecutaría con frecuencia:** Es la consulta base de todo el análisis — cualquier reporte de exposición parte de "¿cuántos eventos hay por zona?".
+
+### Consulta 2 — Eventos por rango de fechas y categoría (preguntas 3 y 4)
+
+* **Pregunta que responde:** ¿Cómo cambia la frecuencia de incendios año con año, y hay estacionalidad mensual?
+* **Campos usados:** `categoria` (igualdad), `fecha_hora` (rango: `$gte`/`$lt` para acotar por año o mes).
+* **Ordenamiento:** Por `fecha_hora` ascendente.
+* **¿Consulta arreglo?** No.
+* **Por qué se ejecutaría con frecuencia:** Cualquier corte temporal (por año, por mes, por rango de suscripción) pasa por aquí — es el patrón que vas a repetir más veces al explorar tendencia/estacionalidad.
+
+### Consulta 3 — Tasa de eventos por póliza activa (pregunta 2)
+
+* **Pregunta que responde:** ¿Qué zonas tienen mayor frecuencia de incendios normalizada por su exposición asegurada?
+* **Campos usados:** `carteras.polizas_activas` (para el cálculo de tasa), vinculado a `eventos_desastres` vía `$geoWithin`/`$lookup` sobre `ubicacion`/`poligono`.
+* **Ordenamiento:** Por la tasa calculada, descendente.
+* **¿Consulta arreglo?** No, pero sí es multi-colección (pipeline con `$lookup`).
+* **Por qué se ejecutaría con frecuencia:** Es la consulta de mayor valor de negocio del proyecto — la que distingue "zona con muchos incendios" de "zona con muchos incendios relativo a su cartera", que es la pregunta real de un suscriptor.
 
