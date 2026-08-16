@@ -233,10 +233,6 @@ de `carteras`, no solo para la zona usada en esta medición.
 # Estrategia de indexación
 **Base:** `riesgo_catastrofico`, colección `eventos_desastres`
 
-Se proponen dos índices — la menor cantidad razonable para cubrir los
-tres patrones de consulta definidos en 3.2 (ver `01_punto_partida.md` y
-`02_medicion_inicial.md`).
-
 ## Índice 1 — Compuesto `categoria` + `fecha_hora`
 
 | Punto | Detalle |
