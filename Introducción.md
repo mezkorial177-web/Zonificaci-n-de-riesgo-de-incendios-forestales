@@ -1,15 +1,11 @@
-# Punto de partida del proyecto
-
-**Proyecto:** Zonificación de riesgo de incendios forestales (wildfire) para
-apoyo a suscripción de seguros de propiedad
-
+# Zonificación de riesgo de incendios forestales para apoyo a suscripción de seguros de propiedad
 
 ---
 
 ## 1. Descripción del problema
 
 Las aseguradoras de propiedad necesitan decidir en qué zonas geográficas
-aceptar, restringir o repriciar la suscripción de pólizas contra incendio,
+aceptar, restringir la suscripción de pólizas contra incendio,
 pero esa decisión suele basarse en información histórica dispersa o
 desactualizada. Este proyecto construye una base documental que cruza el
 historial real de eventos de incendio forestal (NASA EONET, 2002-2025) con
