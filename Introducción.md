@@ -12,13 +12,13 @@ historial real de eventos de incendio forestal (NASA EONET, 2023-2025) con
 una cartera de pólizas por zona geográfica, para responder qué tan
 concentrado está el riesgo de incendio en relación con la exposición
 asegurada actual.
-> **Nota sobre cobertura temporal:**Nota sobre cobertura temporal: el dataset completo abarca 2002-2025, pero esas fechas corresponden a la unión de todas las categorías (Volcanes, Hielo Marino y Lacustre, etc.). La categoría Incendio, que es el foco de este proyecto, solo tiene cobertura consistente a partir de 2022 (1 evento en 2022, 19 en 2023, 4,114 en 2024, 1,184 hasta julio 2025). Esta limitación se documenta explícitamente y condiciona qué tipo de preguntas temporales son defendibles con la evidencia disponible.
 
 La información resultante la utilizaría un **equipo de suscripción/riesgos
 catastróficos** dentro de una aseguradora, como insumo para decidir en qué
 zonas limitar la emisión de nuevas pólizas, ajustar tarifas, o identificar
 zonas de alta actividad de incendios donde la cartera actual está
 subexpuesta o sobreexpuesta.
+> **Nota sobre cobertura temporal: el dataset completo abarca 2002-2025, pero esas fechas corresponden a la unión de todas las categorías (Volcanes, Hielo Marino y Lacustre, etc.). La categoría Incendio, que es el foco de este proyecto, solo tiene cobertura consistente a partir de 2022 (1 evento en 2022, 19 en 2023, 4,114 en 2024, 1,184 hasta julio 2025). Esta limitación se documenta explícitamente y condiciona qué tipo de preguntas temporales son defendibles con la evidencia disponible.
 
 ## 2. Preguntas del proyecto
 
