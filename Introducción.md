@@ -2,8 +2,7 @@
 
 **Proyecto:** Zonificación de riesgo de incendios forestales (wildfire) para
 apoyo a suscripción de seguros de propiedad
-**Módulo:** M6-NOSQL — Diplomado en Bases de Datos SQL y NoSQL, UNAM-IIMAS
-**Estado:** avance semana 2, sección 3.1
+
 
 ---
 
