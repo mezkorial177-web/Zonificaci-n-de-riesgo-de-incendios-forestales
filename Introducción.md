@@ -127,5 +127,5 @@ Scripts de transformación y carga reproducibles:
   justifica — por ahora, fuera de alcance.
 
 
-  # 3.2 Seleccionar y describir los patrones de consulta
+  # Describir los patrones de consulta
 
