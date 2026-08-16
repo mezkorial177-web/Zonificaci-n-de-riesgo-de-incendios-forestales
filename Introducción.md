@@ -158,7 +158,6 @@ Scripts de transformación y carga reproducibles:
 
 # Medición inicial (antes de indexar)
 
-**Sección:** 3.3 de la guía de avance, semana 2
 **Base:** `riesgo_catastrofico`, colección `eventos_desastres` (5,393 documentos, sin índices secundarios)
 
 ## Consultas medidas
@@ -232,8 +231,6 @@ de `carteras`, no solo para la zona usada en esta medición.
 
 
 # Estrategia de indexación
-
-**Sección:** 3.4 de la guía de avance, semana 2
 **Base:** `riesgo_catastrofico`, colección `eventos_desastres`
 
 Se proponen dos índices — la menor cantidad razonable para cubrir los
