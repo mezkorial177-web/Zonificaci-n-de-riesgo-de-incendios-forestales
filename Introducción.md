@@ -154,3 +154,96 @@ Scripts de transformación y carga reproducibles:
 * **¿Consulta arreglo?** No, pero sí es multi-colección (pipeline con `$lookup`).
 * **¿Por qué se ejecutaría con frecuencia?** Es la consulta de mayor valor de negocio del proyecto — la que distingue "zona con muchos incendios" de "zona con muchos incendios relativo a su cartera", que es la pregunta real de un suscriptor.
 
+
+
+# Medición inicial (antes de indexar)
+
+**Sección:** 3.3 de la guía de avance, semana 2
+**Base:** `riesgo_catastrofico`, colección `eventos_desastres` (5,393 documentos, sin índices secundarios)
+
+## Consultas medidas
+
+### Consulta 1 — Frecuencia por zona (representativa: zona África central)
+```javascript
+db.eventos_desastres.find({
+  categoria: "Wildfires",
+  ubicacion: {
+    $geoWithin: {
+      $geometry: {
+        type: "Polygon",
+        coordinates: [[[15,-15],[30,-15],[30,0],[15,0],[15,-15]]]
+      }
+    }
+  }
+}).explain("executionStats")
+```
+
+### Consulta 2 — Rango de fechas + categoría (año 2024)
+```javascript
+db.eventos_desastres.find({
+  categoria: "Wildfires",
+  fecha_hora: {
+    $gte: ISODate("2024-01-01T00:00:00Z"),
+    $lt: ISODate("2025-01-01T00:00:00Z")
+  }
+}).sort({ fecha_hora: 1 }).explain("executionStats")
+```
+
+### Consulta 3 — Frecuencia por zona (representativa: zona EUA suroeste)
+```javascript
+db.eventos_desastres.find({
+  categoria: "Wildfires",
+  ubicacion: {
+    $geoWithin: {
+      $geometry: {
+        type: "Polygon",
+        coordinates: [[[-120,30],[-105,30],[-105,45],[-120,45],[-120,30]]]
+      }
+    }
+  }
+}).explain("executionStats")
+```
+
+## Resultados
+
+| Consulta | Plan | nReturned | totalKeysExamined | totalDocsExamined | SORT aparte |
+|---|---|---|---|---|---|
+| 1 — Zona África central | COLLSCAN | 621 | 0 | 5,393 | No |
+| 2 — Rango fecha 2024 | COLLSCAN | 4,114 | 0 | 5,393 | Sí |
+| 3 — Zona EUA suroeste | COLLSCAN | 377 | 0 | 5,393 | No |
+
+## Interpretación
+
+Las tres consultas ejecutan un `COLLSCAN` completo: examinan los 5,393
+documentos de la colección sin importar cuántos resultados regresan
+(621, 4,114 o 377). `totalKeysExamined: 0` en las tres confirma que no
+hay ningún índice secundario en uso — es la línea base antes de indexar.
+
+La Consulta 2 es la más costosa: además del escaneo completo, agrega una
+etapa `SORT` independiente que ordena en memoria los 4,114 documentos
+resultantes (`totalDataSizeSorted: 1,208,922` bytes). Esto evidencia que
+un índice sobre `fecha_hora` no solo evitaría el `COLLSCAN`, sino también
+el ordenamiento en memoria — el patrón clásico Equality-Sort-Range (ESR)
+a aplicar en el diseño de índices (3.4): un índice compuesto
+`{ categoria: 1, fecha_hora: 1 }` cubre la igualdad de `categoria` y
+permite que el mismo orden del índice sirva para el `sort()` sin
+necesidad de una etapa `SORT` aparte.
+
+Las consultas 1 y 3 usan la misma forma (`categoria` + `$geoWithin`
+sobre `ubicacion`), solo cambia el polígono de la zona. Esto confirma
+que el índice `2dsphere` que se diseñe sirve por igual para las 15 zonas
+de `carteras`, no solo para la zona usada en esta medición.
+
+## Nota de datos detectada durante esta medición
+
+Al construir la Consulta 2 se detectó que la categoría **Wildfires**
+solo tiene cobertura consistente a partir de 2022 (1 evento en 2022, 19
+en 2023, 4,114 en 2024, 1,184 hasta julio 2025), a diferencia del rango
+2002-2025 del dataset completo. Esto ya se corrigió en
+`01_punto_partida.md` y ajustó la pregunta 3 del proyecto (ver ese
+documento). Se documenta aquí también porque fue precisamente esta
+medición inicial la que expuso el problema, antes de construir cualquier
+índice o conclusión sobre tendencia.
+
+
+
