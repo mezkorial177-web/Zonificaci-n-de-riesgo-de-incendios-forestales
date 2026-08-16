@@ -110,7 +110,7 @@ de cada zona:
 
 | Colección | Origen | Naturaleza | Documentos |
 |---|---|---|---|
-| `eventos_desastres` | NASA EONET, vía dataset público de Kaggle ("Global Natural Calamities Dataset") | Real, público, sin información personal | 5,393 (5,318 de categoría Wildfires) |
+| `eventos_desastres` | NASA EONET, vía dataset público de Kaggle ("Global Natural Calamities Dataset") | Real, público, sin información personal | 5,393 (5,318 de categoría Incendio) |
 | `carteras` | Generado para este proyecto a partir de las zonas de mayor densidad real de wildfires | Sintético, documentado explícitamente como tal en cada documento (`"sintetico": true`) | 15 |
 
 No se utiliza información personal real en ninguna de las dos colecciones:
