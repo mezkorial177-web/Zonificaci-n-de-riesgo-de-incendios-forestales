@@ -37,11 +37,7 @@ subexpuesta o sobreexpuesta.
    la cartera actual, y podrían representar riesgo de expansión no
    evaluado?
 
-*(Nota de alcance: el dataset original incluye también las categorías
-Severe Storms, Volcanoes y Sea and Lake Ice, pero con 3, 32 y 40 eventos
-respectivamente no hay evidencia suficiente para sostener un análisis
-independiente. Se documentan como limitación y posible línea de trabajo
-futura, no como parte de las preguntas centrales.)*
+*(Nota de alcance: el dataset original incluye también las categorías "Tormentas severas", "Volcanes" y "Hielo marino y lacustre", pero con 3, 32 y 40 eventos respectivamente no hay evidencia suficiente para sostener un análisis independiente. Se documentan como limitación y posible línea de trabajo futura, no como parte de las preguntas centrales.)*
 
 ## 3. Modelo documental
 
