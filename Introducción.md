@@ -356,11 +356,143 @@ prefijo `categoria`) pero descartó ese plan a favor de
 geoespacial — confirma que el optimizador elige el índice adecuado por
 consulta sin intervención manual.
 
-## Conclusión de la sección
+## Conclusión del antes y despues
 
 Los dos índices diseñados cumplen su propósito: eliminan el
 `COLLSCAN` completo en las tres consultas y, en el caso de la consulta
 temporal, también eliminan el `SORT` en memoria. La mejora es medible y
 reproducible sobre estos datos de prueba; esto
 sustenta la decisión en este entorno.
+
+
+# Reglas de calidad y validador
+
+**Secciones:** 3.6 y 3.7 de la guía de avance, semana 2
+**Base:** `riesgo_catastrofico`, colección principal `eventos_desastres`
+
+## 3.6 — Diccionario de campos
+
+| Campo o ruta | Tipo BSON | Presencia | Restricción y justificación |
+|---|---|---|---|
+| `_id` | string | Obligatorio | Identificador original de EONET. Estructural. |
+| `titulo` | string | Obligatorio | No vacío. Estructural — mínimo para identificar el evento. |
+| `categoria` | string | Obligatorio | Dominio cerrado: `Wildfires`, `Severe Storms`, `Volcanoes`, `Sea and Lake Ice`. Regla de significado — define el tipo de peligro asegurado. |
+| `fecha_hora` | date | Obligatorio | Debe ser `Date` real, no string — de esto depende todo el componente temporal. Estructural. |
+| `anio` | number | Obligatorio | Mínimo 2002 (año más antiguo del dataset). Regla de significado. |
+| `ubicacion.type` | string | Obligatorio | Debe ser `"Point"` exactamente. Estructural. |
+| `ubicacion.coordinates` | array[2] de number | Obligatorio | Longitud: -180 a 180. Latitud: -90 a 90. Regla de significado — fuera de ese rango no es un punto real. |
+| `fuente.origen` | string | Obligatorio | Trazabilidad de procedencia del dato. |
+| `fuente.id_original` | string | Obligatorio | Trazabilidad — permite volver al registro fuente. |
+| `descripcion` | string | **Opcional** | Falta en 88% de los documentos reales. Definido en `properties`, deliberadamente fuera de `required`. |
+
+## 3.7 — Validador `$jsonSchema`
+
+```javascript
+use riesgo_catastrofico
+
+const validador = {
+  $jsonSchema: {
+    bsonType: "object",
+    required: ["_id", "titulo", "categoria", "fecha_hora", "anio", "ubicacion", "fuente"],
+    properties: {
+      _id: { bsonType: "string" },
+      titulo: { bsonType: "string", minLength: 1 },
+      categoria: {
+        bsonType: "string",
+        enum: ["Wildfires", "Severe Storms", "Volcanoes", "Sea and Lake Ice"]
+      },
+      fecha_hora: { bsonType: "date" },
+      anio: { bsonType: "number", minimum: 2002 },
+      ubicacion: {
+        bsonType: "object",
+        required: ["type", "coordinates"],
+        properties: {
+          type: { bsonType: "string", enum: ["Point"] },
+          coordinates: {
+            bsonType: "array",
+            minItems: 2,
+            maxItems: 2,
+            items: [
+              { bsonType: "number", minimum: -180, maximum: 180 },
+              { bsonType: "number", minimum: -90, maximum: 90 }
+            ]
+          }
+        }
+      },
+      fuente: {
+        bsonType: "object",
+        required: ["origen", "id_original"],
+        properties: {
+          origen: { bsonType: "string" },
+          id_original: { bsonType: "string" }
+        }
+      },
+      descripcion: { bsonType: "string" }
+    }
+  }
+}
+
+db.runCommand({
+  collMod: "eventos_desastres",
+  validator: validador,
+  validationLevel: "moderate"
+})
+```
+
+`validationLevel: "moderate"` se eligió a propósito: la colección ya
+tenía 5,393 documentos cargados antes de crear el validador, así que
+`"moderate"` aplica la regla a inserciones y modificaciones nuevas sin
+rechazar retroactivamente lo ya existente.
+
+## Compatibilidad con los datos ya cargados
+
+```javascript
+db.eventos_desastres.countDocuments({ $jsonSchema: validador.$jsonSchema })
+```
+
+**Resultado: 5,393** — el total exacto de la colección. Los 5,393
+documentos reales cumplen el esquema sin excepción; no fue necesario
+corregir, transformar ni excluir ningún documento existente, porque el
+esquema se diseñó directamente a partir de la estructura real de los
+datos (ver `transform_to_mongo.py`).
+
+## Evidencia — documentos de prueba
+
+Se prepararon 2 documentos válidos y 4 inválidos, cada uno aislando una
+sola inconsistencia distinta.
+
+| Documento | Resultado | Regla que se está probando |
+|---|---|---|
+| `TEST_valido_1` | **Aceptado** (`insertedId` confirmado) | Documento completo con todos los campos, incluyendo `descripcion` opcional. |
+| `TEST_valido_2` | **Aceptado** (`insertedId` confirmado) | Documento completo **sin** `descripcion` — confirma que un campo en `properties` sin estar en `required` de verdad es opcional. |
+| `TEST_invalido_1_sin_fecha` | **Rechazado** (`code 121`, Document failed validation) | Falta un campo obligatorio (`fecha_hora` ausente) — viola `required`. |
+| `TEST_invalido_2_fecha_string` | **Rechazado** (`code 121`) | Tipo BSON incorrecto — `fecha_hora` llega como string (`"2024-08-01"`) en vez de `date`, viola `bsonType: "date"`. |
+| `TEST_invalido_3_categoria` | **Rechazado** (`code 121`) | Valor fuera de dominio — `categoria: "Hurricane"` no está en el `enum` permitido. |
+| `TEST_invalido_4_coordenada` | **Rechazado** (`code 121`) | Coordenada fuera de rango — longitud `200` excede el máximo `180` definido para `ubicacion.coordinates[0]`. |
+
+Los 4 rechazos comparten el mismo `code: 121` / `"Document failed
+validation"` de MongoDB, pero cada uno corresponde a una cláusula
+distinta del esquema (`required`, `bsonType`, `enum`, `minimum`/`maximum`)
+— el mensaje genérico del motor no distingue la causa, por eso se anota
+aquí explícitamente cuál regla activó cada rechazo, en vez de usar solo
+el texto del error como explicación.
+
+## Limpieza de documentos de prueba
+
+Antes de continuar con el siguiente paso, elimina los 6 documentos
+`TEST_*` insertados (solo quedaron los 2 válidos realmente guardados en
+la colección; los 4 inválidos nunca llegaron a insertarse):
+
+```javascript
+db.eventos_desastres.deleteMany({ _id: /^TEST_/ })
+```
+
+Confirma después con:
+
+```javascript
+db.eventos_desastres.countDocuments({})
+```
+
+Debe volver a dar exactamente **5,393**.
+
 
