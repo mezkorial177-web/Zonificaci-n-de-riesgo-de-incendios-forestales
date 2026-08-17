@@ -473,5 +473,70 @@ Los 4 rechazos comparten el mismo `code: 121` / `"Document failed
 validation"` de MongoDB, pero cada uno corresponde a una cláusula
 distinta del esquema (`required`, `bsonType`, `enum`, `minimum`/`maximum`)
 
+```javascript
+// VÁLIDO 1 — documento completo normal
+db.eventos_desastres.insertOne({
+  _id: "TEST_valido_1",
+  titulo: "Prueba válida completa",
+  categoria: "Wildfires",
+  fecha_hora: new Date("2024-08-01T12:00:00Z"),
+  anio: 2024,
+  ubicacion: { type: "Point", coordinates: [-100, 35] },
+  fuente: { origen: "NASA EONET via Kaggle", id_original: "TEST_valido_1" },
+  descripcion: "Documento de prueba"
+})
 
+// VÁLIDO 2 — sin descripcion (opcional, debe aceptarse igual)
+db.eventos_desastres.insertOne({
+  _id: "TEST_valido_2",
+  titulo: "Prueba válida sin descripción",
+  categoria: "Volcanoes",
+  fecha_hora: new Date("2023-05-01T00:00:00Z"),
+  anio: 2023,
+  ubicacion: { type: "Point", coordinates: [20, -10] },
+  fuente: { origen: "NASA EONET via Kaggle", id_original: "TEST_valido_2" }
+})
 
+// INVÁLIDO 1 — falta un campo obligatorio (fecha_hora)
+db.eventos_desastres.insertOne({
+  _id: "TEST_invalido_1_sin_fecha",
+  titulo: "Falta fecha_hora",
+  categoria: "Wildfires",
+  anio: 2024,
+  ubicacion: { type: "Point", coordinates: [-100, 35] },
+  fuente: { origen: "NASA EONET via Kaggle", id_original: "TEST_invalido_1" }
+})
+
+// INVÁLIDO 2 — tipo incorrecto (fecha_hora como string, no Date)
+db.eventos_desastres.insertOne({
+  _id: "TEST_invalido_2_fecha_string",
+  titulo: "fecha_hora como texto",
+  categoria: "Wildfires",
+  fecha_hora: "2024-08-01",
+  anio: 2024,
+  ubicacion: { type: "Point", coordinates: [-100, 35] },
+  fuente: { origen: "NASA EONET via Kaggle", id_original: "TEST_invalido_2" }
+})
+
+// INVÁLIDO 3 — categoria fuera del dominio permitido
+db.eventos_desastres.insertOne({
+  _id: "TEST_invalido_3_categoria",
+  titulo: "Categoría inventada",
+  categoria: "Hurricane",
+  fecha_hora: new Date("2024-08-01T12:00:00Z"),
+  anio: 2024,
+  ubicacion: { type: "Point", coordinates: [-100, 35] },
+  fuente: { origen: "NASA EONET via Kaggle", id_original: "TEST_invalido_3" }
+})
+
+// INVÁLIDO 4 — coordenada fuera de rango (longitud > 180)
+db.eventos_desastres.insertOne({
+  _id: "TEST_invalido_4_coordenada",
+  titulo: "Longitud fuera de rango",
+  categoria: "Wildfires",
+  fecha_hora: new Date("2024-08-01T12:00:00Z"),
+  anio: 2024,
+  ubicacion: { type: "Point", coordinates: [200, 35] },
+  fuente: { origen: "NASA EONET via Kaggle", id_original: "TEST_invalido_4" }
+})
+```
