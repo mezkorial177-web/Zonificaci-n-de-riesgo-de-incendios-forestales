@@ -253,7 +253,7 @@ de `carteras`, no solo para la zona usada en esta medición.
 | **Orden de campos** | Un solo campo, no aplica orden compuesto. |
 | **Reutilización de prefijo** | No aplica (índice de un solo campo). |
 | **¿Multikey?** | No en el sentido de arreglos — `ubicacion` es un único `Point`. Internamente `2dsphere` usa una estructura de geohash, pero es detalle de implementación, no "multikey por arreglo". |
-| **Costo esperado** | Más alto que un B-tree simple (construcción y mantenimiento de la estructura de geohash), pero justificado: el componente geoespacial es requisito central del proyecto (semana 3), y sin este índice las 15 consultas por zona seguirían haciendo `COLLSCAN`. |
+| **Costo esperado** | Más alto que un índice de árbol simple (construcción y mantenimiento de la estructura de geohash), pero justificado, sin este índice las 15 consultas por zona seguirían haciendo `COLLSCAN`. |
 
 ## Comandos ejecutados
 
