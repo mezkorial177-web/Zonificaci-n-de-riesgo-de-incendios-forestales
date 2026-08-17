@@ -367,10 +367,9 @@ sustenta la decisión en este entorno.
 
 # Reglas de calidad y validador
 
-**Secciones:** 3.6 y 3.7 de la guía de avance, semana 2
 **Base:** `riesgo_catastrofico`, colección principal `eventos_desastres`
 
-## 3.6 — Diccionario de campos
+## Diccionario de campos
 
 | Campo o ruta | Tipo BSON | Presencia | Restricción y justificación |
 |---|---|---|---|
@@ -385,7 +384,7 @@ sustenta la decisión en este entorno.
 | `fuente.id_original` | string | Obligatorio | Trazabilidad — permite volver al registro fuente. |
 | `descripcion` | string | **Opcional** | Falta en 88% de los documentos reales. Definido en `properties`, deliberadamente fuera de `required`. |
 
-## 3.7 — Validador `$jsonSchema`
+## Validador `$jsonSchema`
 
 ```javascript
 use riesgo_catastrofico
@@ -454,7 +453,7 @@ db.eventos_desastres.countDocuments({ $jsonSchema: validador.$jsonSchema })
 documentos reales cumplen el esquema sin excepción; no fue necesario
 corregir, transformar ni excluir ningún documento existente, porque el
 esquema se diseñó directamente a partir de la estructura real de los
-datos (ver `transform_to_mongo.py`).
+datos.
 
 ## Evidencia — documentos de prueba
 
@@ -473,26 +472,6 @@ sola inconsistencia distinta.
 Los 4 rechazos comparten el mismo `code: 121` / `"Document failed
 validation"` de MongoDB, pero cada uno corresponde a una cláusula
 distinta del esquema (`required`, `bsonType`, `enum`, `minimum`/`maximum`)
-— el mensaje genérico del motor no distingue la causa, por eso se anota
-aquí explícitamente cuál regla activó cada rechazo, en vez de usar solo
-el texto del error como explicación.
 
-## Limpieza de documentos de prueba
-
-Antes de continuar con el siguiente paso, elimina los 6 documentos
-`TEST_*` insertados (solo quedaron los 2 válidos realmente guardados en
-la colección; los 4 inválidos nunca llegaron a insertarse):
-
-```javascript
-db.eventos_desastres.deleteMany({ _id: /^TEST_/ })
-```
-
-Confirma después con:
-
-```javascript
-db.eventos_desastres.countDocuments({})
-```
-
-Debe volver a dar exactamente **5,393**.
 
 
