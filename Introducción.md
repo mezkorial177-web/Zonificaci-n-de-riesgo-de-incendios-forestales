@@ -309,4 +309,59 @@ contando el índice `_id_` por defecto). Confirmado con `getIndexes()`:
 `idx_ubicacion_2dsphere` con `2dsphereIndexVersion: 3`.
 
 
+# Comparación antes / después de indexar
+
+**Base:** `riesgo_catastrofico`, colección `eventos_desastres`, con
+`idx_categoria_fecha` e `idx_ubicacion_2dsphere` ya creados
+
+Se repitieron exactamente las mismas 3 consultas de `02_medicion_inicial.md`,
+sin modificar su forma, para que la comparación sea atribuible únicamente
+a los índices.
+
+## Tabla comparativa
+
+| Consulta | Plan antes | Plan después | nReturned (antes → después) | totalKeysExamined (antes → después) | totalDocsExamined (antes → después) | SORT aparte |
+|---|---|---|---|---|---|---|
+| 1 — Zona África central | COLLSCAN | FETCH ← IXSCAN `idx_ubicacion_2dsphere` | 621 → 621 | 0 → 757 | 5,393 → 747 | No → No |
+| 2 — Rango fecha 2024 | COLLSCAN + SORT | FETCH ← IXSCAN `idx_categoria_fecha` | 4,114 → 4,114 | 0 → 4,114 | 5,393 → 4,114 | **Sí → No** |
+| 3 — Zona EUA suroeste | COLLSCAN | FETCH ← IXSCAN `idx_ubicacion_2dsphere` | 377 → 377 | 0 → 545 | 5,393 → 536 | No → No |
+
+`nReturned` es idéntico antes y después en las tres consultas: el conjunto
+de resultados no cambió, solo la forma en que se encontró.
+
+## Interpretación
+
+**Consulta 2.** El resultado más limpio de los tres: `totalDocsExamined`
+coincide exactamente con `nReturned` (4,114 = 4,114) y la etapa `SORT`
+independiente desapareció. El índice compuesto `{categoria:1,
+fecha_hora:1}` cubre tanto la igualdad de `categoria` como el rango y el
+orden de `fecha_hora`, confirmando el patrón ESR (Equality-Sort-Range)
+usado en el diseño.
+
+**Consultas 1 y 3.** `totalDocsExamined` bajó ~86-90% (de 5,393 a 747 y
+536), pero no coincide exactamente con `nReturned` (621 y 377). Esto es
+un comportamiento esperado de los índices `2dsphere`, no una falla: el
+índice opera sobre celdas de geohash que **aproximan** la región del
+polígono consultado, por lo que el `IXSCAN` devuelve algunos documentos
+"candidatos" cercanos al borde de la zona; la etapa `FETCH` posterior
+aplica el filtro exacto de `$geoWithin` y descarta los que no
+pertenecen realmente al polígono. El índice reduce el trabajo de forma
+sustancial, pero geoespacial conserva por diseño un margen de
+sobreconsulta que un índice B-tree simple no tiene.
+
+**Optimizador.** En las consultas 1 y 3, `rejectedPlans` muestra que
+Mongo también evaluó usar `idx_categoria_fecha` (aprovechando el
+prefijo `categoria`) pero descartó ese plan a favor de
+`idx_ubicacion_2dsphere` por ser más selectivo para una condición
+geoespacial — confirma que el optimizador elige el índice adecuado por
+consulta sin intervención manual.
+
+## Conclusión de la sección
+
+Los dos índices diseñados en 3.4 cumplen su propósito: eliminan el
+`COLLSCAN` completo en las tres consultas y, en el caso de la consulta
+temporal, también eliminan el `SORT` en memoria. La mejora es medible y
+reproducible sobre estos datos de prueba; como señala la guía, esto
+sustenta la decisión en este entorno, no garantiza el mismo beneficio
+sobre otra carga de trabajo o volumen de datos distinto.
 
