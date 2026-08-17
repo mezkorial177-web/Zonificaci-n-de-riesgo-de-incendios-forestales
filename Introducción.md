@@ -314,7 +314,7 @@ contando el índice `_id_` por defecto). Confirmado con `getIndexes()`:
 **Base:** `riesgo_catastrofico`, colección `eventos_desastres`, con
 `idx_categoria_fecha` e `idx_ubicacion_2dsphere` ya creados
 
-Se repitieron exactamente las mismas 3 consultas de `02_medicion_inicial.md`,
+Se repitieron exactamente las mismas 3 consultas de `Medición inicial`,
 sin modificar su forma, para que la comparación sea atribuible únicamente
 a los índices.
 
