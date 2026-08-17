@@ -358,10 +358,9 @@ consulta sin intervención manual.
 
 ## Conclusión de la sección
 
-Los dos índices diseñados en 3.4 cumplen su propósito: eliminan el
+Los dos índices diseñados cumplen su propósito: eliminan el
 `COLLSCAN` completo en las tres consultas y, en el caso de la consulta
 temporal, también eliminan el `SORT` en memoria. La mejora es medible y
-reproducible sobre estos datos de prueba; como señala la guía, esto
-sustenta la decisión en este entorno, no garantiza el mismo beneficio
-sobre otra carga de trabajo o volumen de datos distinto.
+reproducible sobre estos datos de prueba; esto
+sustenta la decisión en este entorno.
 
