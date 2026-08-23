@@ -1169,3 +1169,129 @@ proyecto — confirma estacionalidad real, aunque la pregunta de
 tendencia interanual sigue limitada por la cobertura corta del dataset
 (2022-2025), como ya se documentó en `01_punto_partida.md`.
 
+# Semana 5 — Búsqueda, seguridad y privacidad
+
+## Decisión sobre búsqueda (`$text` / regex)
+
+Ninguna de las 5 preguntas del proyecto requiere buscar lenguaje libre o
+patrones dentro de `titulo`/`descripcion` — todas se responden con
+igualdad, rango de fechas o pertenencia geoespacial sobre campos
+estructurados. **No se integra `$text`/regex como componente
+especializado.** El proyecto ya tiene dos componentes pertinentes
+(geoespacial en semana 3, temporal en semana 4); agregar un tercero sin
+una pregunta que lo sustente repetiría el error que la guía ya advirtió
+para geometría en semana 3 ("no incorporar todas las técnicas de forma
+artificial").
+
+## Clasificación de datos
+
+| Campo/colección | Clasificación | Justificación |
+|---|---|---|
+| `eventos_desastres` (todos los campos) | Público | Datos de NASA EONET, fenómenos naturales, sin información de personas. |
+| `carteras.nombre`, `.poligono`, `.eventos_wildfire_historicos` | Interno | Describe zonas de negocio; aunque sintético, no hay razón para exponerlo fuera del equipo. |
+| `carteras.polizas_activas`, `.suma_asegurada_usd` | Sensible | Representan la exposición financiera de la aseguradora. Se clasifican como sensibles aunque sean sintéticas — diseñar la protección antes de tener el dato real es la práctica correcta. |
+
+## Minimización — vista restringida
+
+```javascript
+use riesgo_catastrofico
+
+db.createView("carteras_publica", "carteras", [
+  { $project: { _id: 1, nombre: 1, eventos_wildfire_historicos: 1 } }
+])
+```
+
+### Evidencia — comparación lado a lado
+
+```javascript
+db.carteras_publica.findOne()
+```
+```javascript
+{
+  "_id" : "zona_04",
+  "nombre" : "Amazonía norte (Brasil)",
+  "eventos_wildfire_historicos" : 341
+}
+```
+
+```javascript
+db.carteras.findOne()
+```
+```javascript
+{
+  "_id" : "zona_04",
+  "nombre" : "Amazonía norte (Brasil)",
+  "poligono" : { "type" : "Polygon", "coordinates" : [...] },
+  "polizas_activas" : 1013,
+  "suma_asegurada_usd" : 182340000,
+  "eventos_wildfire_historicos" : 341,
+  "sintetico" : true,
+  "nota" : "Exposición generada para fines académicos; no representa datos reales de una aseguradora."
+}
+```
+
+Confirmado: `carteras_publica` oculta `poligono`, `polizas_activas` y
+`suma_asegurada_usd` — exactamente los campos clasificados como interno
+y sensible.
+
+## Matriz de roles, operaciones y privilegio mínimo
+
+| Rol | `eventos_desastres` | `carteras` | `carteras_publica` | Justificación |
+|---|---|---|---|---|
+| `rol_admin` | lectura/escritura | lectura/escritura | lectura | Mantenimiento del proyecto (carga, índices, validadores). |
+| `rol_analista_riesgo` | lectura | lectura | lectura | Necesita exposición real para calcular tasas (pregunta 2 del proyecto). |
+| `rol_consulta_publica` | lectura | sin acceso | lectura | Solo contexto de zona y conteo histórico, nunca cifras de pólizas/suma asegurada. |
+
+### Comandos ejecutados
+
+```javascript
+db.createRole({
+  role: "rol_analista_riesgo",
+  privileges: [
+    { resource: { db: "riesgo_catastrofico", collection: "" }, actions: ["find"] }
+  ],
+  roles: []
+})
+
+db.createRole({
+  role: "rol_consulta_publica",
+  privileges: [
+    { resource: { db: "riesgo_catastrofico", collection: "eventos_desastres" }, actions: ["find"] },
+    { resource: { db: "riesgo_catastrofico", collection: "carteras_publica" }, actions: ["find"] }
+  ],
+  roles: []
+})
+```
+
+### Evidencia
+
+Ambos roles se crearon con los privilegios exactos definidos en la
+matriz (confirmado con la salida completa de cada `createRole()`,
+mostrando resource, actions y roles heredados vacíos como se esperaba).
+
+## Rol diseñado vs. denegación comprobada
+
+El Learner Lab corre `mongod` **sin `--auth`** (confirmado desde el
+arranque inicial del proyecto: el warning de startup dice explícitamente
+*"Access control is not enabled for the database. Read and write access
+to data and configuration is unrestricted"*). Esto significa que lo que
+tenemos es un **rol diseñado**: la matriz de privilegios está
+correctamente especificada y los roles existen en la base con los
+`createRole()` de arriba. No es una **denegación realmente comprobada**:
+sin autenticación activa, cualquier conexión (incluso sin usuario
+asignado) tiene acceso total a todas las colecciones, y no es posible
+demostrar en este entorno que `rol_consulta_publica` de verdad falla al
+intentar leer `polizas_activas` directamente de `carteras`.
+
+## Credenciales
+
+Ningún script, documento, consulta o archivo del proyecto contiene
+contraseñas, llaves ni cadenas de conexión — todas las conexiones son
+locales sin autenticación (`mongodb://127.0.0.1:27017`). En un entorno
+de producción (por ejemplo MongoDB Atlas), la credencial de conexión
+iría en una variable de entorno o gestor de secretos, nunca en el
+repositorio de código. No aplica en este Lab porque no existe una
+credencial real que proteger, pero se documenta como la práctica
+correcta a seguir si el proyecto se desplegara fuera del entorno
+académico.
+
