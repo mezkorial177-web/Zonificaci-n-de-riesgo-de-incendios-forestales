@@ -887,4 +887,90 @@ definieron precisamente por ser las de mayor concentración; el resto es,
 por diseño, de menor densidad individual aunque sume un volumen
 importante en conjunto).
 
+# Integración de la selección espacial con un análisis
+
+**Unidad de análisis:** zona geográfica de cartera (15 zonas, colección
+`carteras`). **Indicador:** cantidad de eventos Wildfire por zona, y
+tasa de eventos por póliza activa (eventos ÷ pólizas).
+
+## Pipeline
+
+`$geoWithin` no puede correlacionarse dentro de `$lookup` (no es una
+expresión válida en `$expr`), así que se usó `$facet`: una sub-consulta
+por zona dentro de un mismo `aggregate()`, combinada después con los
+datos de `carteras` en el cliente.
+
+```javascript
+const zonas = db.carteras.find({}).toArray();
+
+const facetStages = {};
+zonas.forEach(z => {
+  facetStages[z._id] = [
+    { $match: {
+        categoria: "Wildfires",
+        ubicacion: { $geoWithin: { $geometry: z.poligono } }
+      }
+    },
+    { $count: "eventos" }
+  ];
+});
+
+const resultadoFacet = db.eventos_desastres.aggregate([
+  { $facet: facetStages }
+]).toArray()[0];
+
+const tabla = zonas.map(z => {
+  const eventos = resultadoFacet[z._id][0] ? resultadoFacet[z._id][0].eventos : 0;
+  const tasa = eventos / z.polizas_activas;
+  return {
+    zona: z._id,
+    nombre: z.nombre,
+    eventos: eventos,
+    polizas_activas: z.polizas_activas,
+    tasa_eventos_por_poliza: Math.round(tasa * 10000) / 10000
+  };
+});
+
+tabla.sort((a, b) => b.tasa_eventos_por_poliza - a.tasa_eventos_por_poliza);
+printjson(tabla);
+```
+
+## Resultado — 15 zonas ordenadas por tasa (no por conteo bruto)
+
+| Zona | Región | Eventos | Pólizas activas | Tasa evento/póliza |
+|---|---|---|---|---|
+| zona_01 | África central (Angola/RDC/Zambia) | 621 | 1,060 | 0.5858 |
+| zona_03 | EUA suroeste (California/Nevada/Arizona) | 377 | 905 | 0.4166 |
+| zona_02 | EUA centro-sur (Texas/Oklahoma) | 392 | 1,046 | 0.3748 |
+| zona_04 | Amazonía norte (Brasil) | 344 | 1,013 | 0.3396 |
+| zona_08 | Australia oeste | 243 | 1,120 | 0.2170 |
+| zona_07 | Sahel (Chad/RCA) | 256 | 1,188 | 0.2155 |
+| zona_09 | África austral (Zimbabue/Botsuana) | 207 | 1,175 | 0.1762 |
+| zona_05 | Amazonía sur (Brasil/Paraguay) | 267 | 1,630 | 0.1638 |
+| zona_06 | Australia este | 269 | 1,688 | 0.1594 |
+| zona_11 | África oriental (Tanzania/Kenia) | 175 | 1,109 | 0.1578 |
+| zona_12 | EUA/Canadá noroeste Pacífico | 166 | 1,317 | 0.1260 |
+| zona_10 | EUA sureste | 187 | 1,606 | 0.1164 |
+| zona_13 | Perú/Brasil (Amazonía oeste) | 138 | 1,265 | 0.1091 |
+| zona_14 | Siberia/Mongolia | 129 | 1,671 | 0.0772 |
+| zona_15 | EUA costa oeste (Pacífico) | 127 | 2,258 | 0.0562 |
+
+## Interpretación y límite (tabla de la guía)
+
+| Pregunta | Operador y referencia | Selección | Resultado | Interpretación y límite |
+|---|---|---|---|---|
+| ¿Qué zonas tienen mayor tasa de eventos por póliza activa? | `$geoWithin` por zona dentro de `$facet`, sobre los 15 polígonos de `carteras` | 5,318 eventos Wildfire evaluados contra 15 polígonos | zona_01 (0.5858) es la de mayor tasa; zona_15 (0.0562) la menor | El **orden por tasa difiere del orden por conteo bruto**: zona_03 (377 eventos) supera a zona_02 (392 eventos) en tasa, porque tiene menos exposición asegurada (905 vs 1,046 pólizas). Esto confirma que un conteo crudo no es una tasa. **Límite:** la exposición (`polizas_activas`) es sintética y se generó de forma inversamente proporcional al conteo histórico de eventos — parte de esta correlación está incorporada por diseño en los datos, no es un hallazgo totalmente independiente. En un proyecto con exposición real, este análisis se repetiría igual, pero la interpretación de "por qué" cada zona tiene su nivel de exposición vendría de decisiones reales de suscripción, no de una fórmula. |
+
+## Nota de transparencia (importante para la presentación)
+
+La fórmula de `generate_carteras.py` construyó `polizas_activas` con una
+relación inversa al conteo histórico de eventos (supuesto de negocio:
+"zonas de mayor siniestralidad → suscripción más restrictiva"). Esto
+significa que el hallazgo "la tasa reordena el ranking respecto al
+conteo bruto" está parcialmente **incorporado por construcción** en los
+datos sintéticos, no es un patrón descubierto de forma independiente.
+Se documenta aquí explícitamente para no presentar como "hallazgo" algo
+que en parte es consecuencia del diseño de los datos de prueba — la
+misma exigencia de honestidad que ya aplicamos al corregir la pregunta
+3 sobre tendencia temporal.
 
