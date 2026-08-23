@@ -974,3 +974,109 @@ que en parte es consecuencia del diseño de los datos de prueba — la
 misma exigencia de honestidad que ya aplicamos al corregir la pregunta
 3 sobre tendencia temporal.
 
+# Casos de control
+
+**Zona de referencia:** `zona_01`, polígono
+`[[[15,-15],[30,-15],[30,0],[15,0],[15,-15]]]`
+
+## Casos preparados
+
+| Caso | _id de control | Coordenada | Qué prueba |
+|---|---|---|---|
+| 1 | `CTRL_dentro` | `[20, -5]` | Punto claramente dentro del polígono |
+| 2 | `CTRL_fuera` | `[50, 60]` | Punto claramente fuera (norte de Europa/Rusia) |
+| 3 | `CTRL_limite` | `[15, -8]` | Longitud exactamente sobre el borde del polígono |
+| 4 | (evento real) | — | Ubicación dentro de la zona que **no** satisface el filtro temático (`categoria: "Wildfires"`) |
+
+## Consulta o pipeline exacto
+
+```javascript
+const zona01 = { type: "Polygon", coordinates: [[[15,-15],[30,-15],[30,0],[15,0],[15,-15]]] };
+
+// Caso 1
+db.eventos_desastres.find({
+  _id: "CTRL_dentro",
+  ubicacion: { $geoWithin: { $geometry: zona01 } }
+}).count()
+
+// Caso 2
+db.eventos_desastres.find({
+  _id: "CTRL_fuera",
+  ubicacion: { $geoWithin: { $geometry: zona01 } }
+}).count()
+
+// Caso 3
+db.eventos_desastres.find({
+  _id: "CTRL_limite",
+  ubicacion: { $geoWithin: { $geometry: zona01 } }
+}).count()
+
+// Caso 4
+db.eventos_desastres.find({
+  categoria: { $ne: "Wildfires" },
+  ubicacion: { $geoWithin: { $geometry: zona01 } }
+})
+```
+
+## Índice disponible
+
+`idx_ubicacion_2dsphere` sobre `eventos_desastres.ubicacion` (ver
+`09_verificacion_indice_geoespacial.md`).
+
+## Documentos incluidos y excluidos — resultado
+
+| Caso | Resultado | Documentos incluidos/excluidos |
+|---|---|---|
+| 1 — Dentro | `count = 1` | `CTRL_dentro` incluido, como se esperaba |
+| 2 — Fuera | `count = 0` | `CTRL_fuera` excluido, como se esperaba |
+| 3 — Sobre el límite | `count = 1` | `CTRL_limite` **incluido** |
+| 4 — Filtro temático no satisfecho | 1 documento devuelto | `EONET_12815` ("Nyamulagira Volcano DR Congo", categoría `Volcanoes`, dentro de zona_01) |
+
+## Interpretación en términos del problema
+
+**Casos 1 y 2** confirman el comportamiento básico esperado de
+`$geoWithin`: incluye lo que está dentro, excluye lo que está fuera, sin
+sorpresas.
+
+**Caso 3** es el hallazgo específico de esta sección: un punto
+exactamente sobre el borde del polígono (`longitud = 15`, el límite
+oeste exacto de zona_01) se considera **dentro** de la zona.
+`$geoWithin` opera sobre regiones cerradas — la frontera pertenece a la
+región. Esto es importante para el diseño de zonas de suscripción
+reales: si dos zonas fueran colindantes (comparten un borde), un evento
+justo sobre esa línea podría contarse en ambas si se consultan por
+separado, o solo en la primera evaluada dentro de un `$facet`. En
+nuestro caso las 15 zonas no son colindantes entre sí (hay huecos entre
+las celdas de la rejilla), así que esta ambigüedad no afecta los
+resultados ya calculados en 3.7, pero se documenta como comportamiento
+del motor a considerar si el proyecto creciera a zonas adyacentes.
+
+**Caso 4** confirma, con un documento real (no un punto inventado), el
+hallazgo indirecto que ya habíamos visto en 3.6 (622 eventos totales vs.
+621 Wildfires en zona_01): el evento adicional es un volcán en la
+República Democrática del Congo, geográficamente dentro del rectángulo
+de zona_01 pero de una categoría distinta a la que analiza el proyecto.
+Confirma que el filtro temático (`categoria: "Wildfires"`) sí está
+haciendo su trabajo — sin él, el análisis de zona_01 incluiría un
+peligro (volcánico) que no corresponde al alcance del proyecto.
+
+## Limitaciones de cobertura, precisión, fecha o escala
+
+- Los casos de control se probaron solo contra `zona_01`; el
+  comportamiento de borde (Caso 3) no se repitió para las otras 14
+  zonas, pero al ser todas rectángulos con la misma lógica de
+  construcción, se espera el mismo comportamiento.
+- La granularidad de las zonas (15°×15°) es gruesa; un punto "sobre el
+  límite" en este proyecto puede estar a cientos de kilómetros de
+  cualquier frontera real de suscripción, a diferencia de un caso real
+  donde el borde podría coincidir con un límite estatal o de código
+  postal.
+
+## Limpieza de documentos de control
+
+```javascript
+db.eventos_desastres.deleteMany({ _id: /^CTRL_/ })
+db.eventos_desastres.countDocuments({})
+```
+
+Debe volver a dar **5,393**.
