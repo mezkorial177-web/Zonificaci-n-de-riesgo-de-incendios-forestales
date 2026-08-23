@@ -2,7 +2,7 @@
 
 ---
 
-## 1. Descripción del problema
+## Descripción del problema
 
 Las aseguradoras de propiedad necesitan decidir en qué zonas geográficas
 aceptar, restringir la suscripción de pólizas contra incendio,
@@ -26,7 +26,7 @@ subexpuesta o sobreexpuesta.
 > explícitamente y condiciona qué tipo de preguntas temporales son defendibles con
 > la evidencia disponible.
 
-## 2. Preguntas del proyecto
+## Preguntas del proyecto
 
 1. ¿En qué zonas geográficas se concentra históricamente la actividad de
    incendios forestales, y cómo se compara esa concentración con el tamaño
@@ -44,9 +44,9 @@ subexpuesta o sobreexpuesta.
    la cartera actual, y podrían representar riesgo de expansión no
    evaluado?
 
-*(Nota de alcance: el dataset original incluye también las categorías "Tormentas severas", "Volcanes" y "Hielo marino y lacustre", pero con 3, 32 y 40 eventos respectivamente no hay evidencia suficiente para sostener un análisis independiente. Se documentan como limitación y posible línea de trabajo futura, no como parte de las preguntas centrales.)*
+*(Nota de alcance: el dataset original incluye también las categorías "Tormentas severas", "Volcanes" y "Hielo marino y lacustre", pero con 3, 32 y 40 eventos respectivamente no hay evidencia suficiente para sostener un análisis independiente.)*
 
-## 3. Modelo documental
+## Modelo documental
 
 ### Colección principal: `eventos_desastres`
 
@@ -101,8 +101,7 @@ de cada zona:
   `carteras` es pequeña y cambia con la operación normal del negocio
   (pólizas que entran y salen). Embeber datos de cartera en cada evento
   obligaría a reescribir miles de documentos cada vez que cambia una
-  póliza — el anti-patrón clásico de embeber un dato de alta frecuencia
-  de actualización dentro de un documento de alto volumen.
+  póliza.
 - **La relación es espacial, no por llave.** No se guarda un campo
   `zona_id` dentro de cada evento. La pertenencia de un evento a una zona
   se calcula dinámicamente con `$geoWithin`/`$lookup` sobre el polígono.
@@ -113,7 +112,7 @@ de cada zona:
   es útil sin eventos (por ejemplo para reportes de exposición). Embeber
   una dentro de otra rompería esa independencia.
 
-## 4. Conjunto de datos
+## Conjunto de datos
 
 | Colección | Origen | Naturaleza | Documentos |
 |---|---|---|---|
@@ -130,17 +129,16 @@ Scripts de transformación y carga reproducibles:
   fuente.
 - `generate_carteras.py` — genera `carteras.json` a partir de
   `eventos_desastres.json`.
-  (histórico de cambios de polígono) si el alcance del proyecto lo
-  justifica — por ahora, fuera de alcance.
+  (histórico de cambios de polígono).
 
 
- ## 5. Consultas principales
+ ## Consultas principales
 
 ### Consulta 1 — Frecuencia histórica por zona (preguntas 1 y 5)
 
 * **Pregunta que responde:** ¿En qué zonas se concentra la actividad de incendios, y cuáles tienen actividad significativa pero no cartera asignada?
 * **Campos usados:** `categoria` (igualdad: `"Wildfires"`), `ubicacion`.
-* **Ordenamiento:** Ninguno todavía a este nivel.
+* **Ordenamiento:** Ninguno.
 * **¿Consulta arreglo?** No.
 * **¿Por qué se ejecutaría con frecuencia?** Es la consulta base de todo el análisis — cualquier reporte de exposición parte de "¿cuántos eventos hay por zona?".
 
@@ -163,8 +161,6 @@ Scripts de transformación y carga reproducibles:
 
 
 # Medición inicial (antes de indexar)
-
-**Base:** `riesgo_catastrofico`, colección `eventos_desastres` (5,393 documentos, sin índices secundarios)
 
 ## Consultas medidas
 
@@ -222,13 +218,13 @@ db.eventos_desastres.find({
 Las tres consultas ejecutan un `COLLSCAN` completo: examinan los 5,393
 documentos de la colección sin importar cuántos resultados regresan
 (621, 4,114 o 377). `totalKeysExamined: 0` en las tres confirma que no
-hay ningún índice secundario en uso — es la línea base antes de indexar.
+hay ningún índice en uso — es la línea base antes de indexar.
 
 La Consulta 2 es la más costosa: además del escaneo completo, agrega una
 etapa `SORT` independiente que ordena en memoria los 4,114 documentos
 resultantes (`totalDataSizeSorted: 1,208,922` bytes). Esto evidencia que
 un índice sobre `fecha_hora` no solo evitaría el `COLLSCAN`, sino también
-el ordenamiento en memoria
+el ordenamiento en memoria.
 
 Las consultas 1 y 3 usan la misma forma (`categoria` + `$geoWithin`
 sobre `ubicacion`), solo cambia el polígono de la zona. Esto confirma
@@ -237,7 +233,6 @@ de `carteras`, no solo para la zona usada en esta medición.
 
 
 # Estrategia de indexación
-**Base:** `riesgo_catastrofico`, colección `eventos_desastres`
 
 ## Índice 1 — Compuesto `categoria` + `fecha_hora`
 
@@ -258,8 +253,8 @@ de `carteras`, no solo para la zona usada en esta medición.
 | **Consulta que apoya** | Consultas 1 y 3: `$geoWithin` sobre las 15 zonas de `carteras`, y futuras `$geoNear`/`$geoIntersects` |
 | **Orden de campos** | Un solo campo, no aplica orden compuesto. |
 | **Reutilización de prefijo** | No aplica (índice de un solo campo). |
-| **¿Multikey?** | No en el sentido de arreglos — `ubicacion` es un único `Point`. Internamente `2dsphere` usa una estructura de geohash, pero es detalle de implementación, no "multikey por arreglo". |
-| **Costo esperado** | Más alto que un índice de árbol simple (construcción y mantenimiento de la estructura de geohash), pero justificado, sin este índice las 15 consultas por zona seguirían haciendo `COLLSCAN`. |
+| **¿Multikey?** | No. |
+| **Costo esperado** | Más alto que un índice de árbol simple, pero justificado, sin este índice las 15 consultas por zona seguirían haciendo `COLLSCAN`. |
 
 ## Comandos ejecutados
 
@@ -317,9 +312,6 @@ contando el índice `_id_` por defecto). Confirmado con `getIndexes()`:
 
 # Comparación antes / después de indexar
 
-**Base:** `riesgo_catastrofico`, colección `eventos_desastres`, con
-`idx_categoria_fecha` e `idx_ubicacion_2dsphere` ya creados
-
 Se repitieron exactamente las mismas 3 consultas de `Medición inicial`,
 sin modificar su forma, para que la comparación sea atribuible únicamente
 a los índices.
@@ -347,13 +339,13 @@ usado en el diseño.
 **Consultas 1 y 3.** `totalDocsExamined` bajó ~86-90% (de 5,393 a 747 y
 536), pero no coincide exactamente con `nReturned` (621 y 377). Esto es
 un comportamiento esperado de los índices `2dsphere`, no una falla: el
-índice opera sobre celdas de geohash que **aproximan** la región del
+índice opera sobre celdas que **aproximan** la región del
 polígono consultado, por lo que el `IXSCAN` devuelve algunos documentos
 "candidatos" cercanos al borde de la zona; la etapa `FETCH` posterior
 aplica el filtro exacto de `$geoWithin` y descarta los que no
 pertenecen realmente al polígono. El índice reduce el trabajo de forma
 sustancial, pero geoespacial conserva por diseño un margen de
-sobreconsulta que un índice B-tree simple no tiene.
+sobreconsulta que un índice simple no tiene.
 
 **Optimizador.** En las consultas 1 y 3, `rejectedPlans` muestra que
 Mongo también evaluó usar `idx_categoria_fecha` (aprovechando el
@@ -372,8 +364,6 @@ sustenta la decisión en este entorno.
 
 
 # Reglas de calidad y validador
-
-**Base:** `riesgo_catastrofico`, colección principal `eventos_desastres`
 
 ## Diccionario de campos
 
@@ -571,14 +561,14 @@ directamente de si un evento cae dentro del polígono de una zona. Las otras dos
 | Sistema de referencia, orden, unidades | WGS84. Orden longitud-latitud, grados decimales — confirmado contra el CSV fuente antes de transformar. |
 | Granularidad y exactitud sostenible | Punto único por evento con varios decimales de precisión; representa la ubicación de detección reportada por la fuente, no el perímetro real del fenómeno. |
 | Atributos temáticos | `categoria`, `fecha_hora`, `titulo`, `descripcion` (opcional). |
-| Tratamiento aplicado | Sin anonimización (no son datos de personas). Se descartó la trayectoria completa en ~31 eventos con más de una coordenada (icebergs/tormentas en movimiento), conservando solo la primera posición — limitación documentada en `01_punto_partida.md`. |
+| Tratamiento aplicado | Sin anonimización (no son datos de personas). Se descartó la trayectoria completa en ~31 eventos con más de una coordenada (icebergs/tormentas en movimiento), conservando solo la primera posición. |
 
 ## Entidad 2 — Polígono de zona (`carteras.poligono`)
 
 | Punto de la guía | Respuesta |
 |---|---|
 | Qué se localiza y por qué como `Polygon` | Área de suscripción de una zona de cartera. `Polygon` porque la pregunta 1 del proyecto requiere saber si un evento cae **dentro** de una región, lo que exige geometría de área, no un punto. |
-| Fuente y fecha de consulta | No es fuente externa: los límites se calcularon a partir de la densidad real de eventos Wildfire en `eventos_desastres` (celdas de rejilla 15×15° con mayor concentración).|
+| Fuente y fecha de consulta | No es fuente externa: los límites se calcularon a partir de la densidad real de eventos Wildfire en `eventos_desastres` (celdas de rejilla 15°×15° con mayor concentración).|
 | Sistema de referencia, orden, unidades | WGS84, orden longitud-latitud — necesario para comparar correctamente contra `ubicacion` con `$geoWithin`. |
 | Granularidad y exactitud sostenible | Rectángulos de 15×15 grados. No siguen fronteras políticas ni geográficas reales; es una simplificación deliberada, no representa límites reales de suscripción de una aseguradora. |
 | Atributos temáticos | `nombre`, `polizas_activas`, `suma_asegurada_usd`, `eventos_wildfire_historicos`. |
@@ -747,7 +737,7 @@ El proyecto tiene dos geometrías: `eventos_desastres.ubicacion` (`Point`,
 - `carteras` tiene solo 15 documentos. Escanearlos completos es
   prácticamente gratis; un índice ahí no reduciría trabajo medible. Crear
   ese índice sería indexar "porque existe la geometría", no porque una
-  consulta lo necesite 
+  consulta lo necesite.
 
 ## Evidencia
 
