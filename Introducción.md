@@ -554,4 +554,39 @@ porque 3 de las 5 preguntas del proyecto dependen
 directamente de si un evento cae dentro del polígono de una zona. Las otras dos preguntas permanecen como un índice temporal.
 
 
+# Delimitación de datos geográficos
+
+## Entidad 1 — Ubicación del evento (`eventos_desastres.ubicacion`)
+
+| Punto de la guía | Respuesta |
+|---|---|
+| Qué se localiza y por qué como `Point` | Lugar donde EONET detectó el foco de incendio (u otro fenómeno). `Point` porque la fuente entrega coordenada puntual, sin información de extensión/perímetro del evento. |
+| Fuente y fecha de consulta | NASA EONET, vía dataset público de Kaggle "Global Natural Calamities Dataset". |
+| Sistema de referencia, orden, unidades | WGS84. Orden longitud-latitud, grados decimales — confirmado contra el CSV fuente antes de transformar. |
+| Granularidad y exactitud sostenible | Punto único por evento con varios decimales de precisión; representa la ubicación de detección reportada por la fuente, no el perímetro real del fenómeno. |
+| Atributos temáticos | `categoria`, `fecha_hora`, `titulo`, `descripcion` (opcional). |
+| Tratamiento aplicado | Sin anonimización (no son datos de personas). Se descartó la trayectoria completa en ~31 eventos con más de una coordenada (icebergs/tormentas en movimiento), conservando solo la primera posición — limitación documentada en `01_punto_partida.md`. |
+
+## Entidad 2 — Polígono de zona (`carteras.poligono`)
+
+| Punto de la guía | Respuesta |
+|---|---|
+| Qué se localiza y por qué como `Polygon` | Área de suscripción de una zona de cartera. `Polygon` porque la pregunta 1 del proyecto requiere saber si un evento cae **dentro** de una región, lo que exige geometría de área, no un punto. |
+| Fuente y fecha de consulta | No es fuente externa: los límites se calcularon a partir de la densidad real de eventos Wildfire en `eventos_desastres` (celdas de rejilla 15×15° con mayor concentración).|
+| Sistema de referencia, orden, unidades | WGS84, orden longitud-latitud — necesario para comparar correctamente contra `ubicacion` con `$geoWithin`. |
+| Granularidad y exactitud sostenible | Rectángulos de 15×15 grados. No siguen fronteras políticas ni geográficas reales; es una simplificación deliberada, no representa límites reales de suscripción de una aseguradora. |
+| Atributos temáticos | `nombre`, `polizas_activas`, `suma_asegurada_usd`, `eventos_wildfire_historicos`. |
+| Tratamiento aplicado | Totalmente sintético (documento marcado como tal en cada registro). Ni los polígonos son fronteras reales de suscripción, ni la exposición (`polizas_activas`, `suma_asegurada_usd`) proviene de una aseguradora real — generados por fórmula para fines académicos. |
+
+## Protección de ubicaciones
+
+Ninguna de las dos colecciones contiene domicilios ni trayectorias
+reales de personas. `eventos_desastres` geolocaliza fenómenos naturales
+públicos, no personas. `carteras` es exposición sintética a nivel de
+zona geográfica amplia (15°×15°, no domicilio individual), lo que evita
+que pueda confundirse con datos de clientes reales.
+
+
+
+
 
