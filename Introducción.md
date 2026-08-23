@@ -786,5 +786,105 @@ de 5,393 a 747 y 536 respectivamente en las consultas 1 y 3, sin cambiar
 ya generada.
 
 
+# Construcción de la consulta espacial
+
+## Elección del operador
+
+Las preguntas 1, 2 y 5 del proyecto requieren **pertenencia** (¿el
+evento cae dentro del polígono de la zona?), no proximidad ni
+intersección de geometrías. Esto descarta:
+
+- **`$near` / `$geoNear`**: ordenan por distancia a un punto de
+  referencia. Ninguna pregunta pide "los eventos más cercanos a un
+  punto"; la unidad de análisis es la zona completa.
+- **`$geoIntersects`**: compara si dos geometrías comparten alguna
+  porción del espacio. Con `ubicacion` como `Point`, daría el mismo
+  resultado numérico que `$geoWithin`, pero es semánticamente el
+  operador equivocado para "¿el punto está contenido en la región?".
+
+**Operador elegido:** `$geoWithin`, sobre `eventos_desastres.ubicacion`
+contra `carteras.poligono`.
+
+## Construcción progresiva
+
+### Paso 1 — solo selección espacial (sin filtro temático)
+
+```javascript
+db.eventos_desastres.find({
+  ubicacion: {
+    $geoWithin: {
+      $geometry: {
+        type: "Polygon",
+        coordinates: [[[15,-15],[30,-15],[30,0],[15,0],[15,-15]]]
+      }
+    }
+  }
+}).count()
+```
+**Resultado: 622** (todas las categorías dentro de la zona de África central).
+
+### Paso 2 — agregando el filtro temático (`categoria`)
+
+```javascript
+db.eventos_desastres.find({
+  categoria: "Wildfires",
+  ubicacion: {
+    $geoWithin: {
+      $geometry: {
+        type: "Polygon",
+        coordinates: [[[15,-15],[30,-15],[30,0],[15,0],[15,-15]]]
+      }
+    }
+  }
+}).count()
+```
+**Resultado: 621** (solo Wildfires).
+
+**Verificación:** 622 ≥ 621, como se esperaba — la condición temática
+adicional nunca puede aumentar el conteo, solo mantenerlo o reducirlo.
+La diferencia de 1 corresponde a un evento de otra categoría presente
+en esa misma zona geográfica.
+
+## Consulta para la pregunta 5 — eventos fuera de cualquier zona de cartera
+
+A diferencia de las anteriores (pertenencia a **una** zona), esta
+pregunta requiere pertenencia negada a **las 15 zonas a la vez**. Se
+construye dinámicamente desde `carteras` con `$nor`, sin escribir los
+15 polígonos a mano:
+
+```javascript
+const zonas = db.carteras.find({}, { poligono: 1, _id: 0 }).toArray();
+const condicionesDentroDeZonas = zonas.map(z => ({
+  ubicacion: { $geoWithin: { $geometry: z.poligono } }
+}));
+
+db.eventos_desastres.find({
+  categoria: "Wildfires",
+  $nor: condicionesDentroDeZonas
+}).count()
+```
+**Resultado: 1,420** wildfires (de 5,318 totales) caen fuera de las 15
+zonas de cartera actuales.
+
+**Verificación cruzada:** al diseñar las zonas (`generate_carteras.py`)
+se calculó que las top-15 celdas de densidad cubrían 3,904 de 5,318
+wildfires, dejando ~1,414 fuera. El resultado real vía `$geoWithin`
+(1,420) es consistente con esa estimación; la diferencia de 6 eventos
+se debe a que el cálculo original de densidad usaba división entera por
+celda de rejilla, mientras que `$geoWithin` evalúa contención geométrica
+real contra el polígono — una discrepancia de borde esperable, no un
+error de datos.
+
+## Interpretación (respuesta preliminar a la pregunta 5)
+
+1,420 eventos históricos de wildfire (27% del total) ocurrieron fuera
+de cualquier zona actualmente cubierta por la cartera sintética. En
+términos de negocio, esto representa actividad de riesgo no evaluada
+por la suscripción actual — una oportunidad de expansión de cartera o,
+alternativamente, evidencia de que esas zonas fueron correctamente
+excluidas por baja densidad relativa (recordar: las 15 zonas se
+definieron precisamente por ser las de mayor concentración; el resto es,
+por diseño, de menor densidad individual aunque sume un volumen
+importante en conjunto).
 
 
