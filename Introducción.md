@@ -587,6 +587,204 @@ zona geográfica amplia (15°×15°, no domicilio individual), lo que evita
 que pueda confundirse con datos de clientes reales.
 
 
+# Representación y comprobación de geometrías
+
+### Validador ampliado — colección `carteras`
+Se agrega ahora el de `carteras`, incluyendo la estructura de `poligono` como
+`Polygon` GeoJSON:
+
+```javascript
+use riesgo_catastrofico
+
+const validadorCarteras = {
+  $jsonSchema: {
+    bsonType: "object",
+    required: ["_id", "nombre", "poligono", "polizas_activas", "suma_asegurada_usd"],
+    properties: {
+      _id: { bsonType: "string" },
+      nombre: { bsonType: "string", minLength: 1 },
+      poligono: {
+        bsonType: "object",
+        required: ["type", "coordinates"],
+        properties: {
+          type: { bsonType: "string", enum: ["Polygon"] },
+          coordinates: {
+            bsonType: "array",
+            minItems: 1,
+            items: {
+              bsonType: "array",
+              minItems: 4,
+              items: {
+                bsonType: "array",
+                minItems: 2,
+                maxItems: 2,
+                items: [
+                  { bsonType: "number", minimum: -180, maximum: 180 },
+                  { bsonType: "number", minimum: -90, maximum: 90 }
+                ]
+              }
+            }
+          }
+        }
+      },
+      polizas_activas: { bsonType: "number", minimum: 0 },
+      suma_asegurada_usd: { bsonType: "number", minimum: 0 },
+      eventos_wildfire_historicos: { bsonType: "number", minimum: 0 }
+    }
+  }
+}
+
+db.runCommand({
+  collMod: "carteras",
+  validator: validadorCarteras,
+  validationLevel: "moderate"
+})
+```
+
+En el anillo exige al menos 4 posiciones (mínimo GeoJSON
+válido para un polígono simple: 3 vértices distintos + el punto de
+cierre) 
+
+## Compatibilidad con los datos ya cargados
+
+```javascript
+db.carteras.countDocuments({ $jsonSchema: validadorCarteras.$jsonSchema })
+```
+
+El resultado es **15** (las 15 zonas ya cumplen, porque el esquema se diseñó a
+partir de la estructura real generada por `generate_carteras.py`).
+
+## Casos de prueba — geometría (5 casos, cada uno aísla una inconsistencia)
+
+```javascript
+// 1. Geometría válida — zona de prueba nueva
+db.carteras.insertOne({
+  _id: "TEST_zona_valida",
+  nombre: "Zona de prueba válida",
+  poligono: { type: "Polygon", coordinates: [[[0,0],[10,0],[10,10],[0,10],[0,0]]] },
+  polizas_activas: 100,
+  suma_asegurada_usd: 18000000
+})
+
+// 2. type incorrecto (no es "Polygon")
+db.carteras.insertOne({
+  _id: "TEST_type_incorrecto",
+  nombre: "Type inválido",
+  poligono: { type: "Rectangle", coordinates: [[[0,0],[10,0],[10,10],[0,10],[0,0]]] },
+  polizas_activas: 100,
+  suma_asegurada_usd: 18000000
+})
+
+// 3. Coordenadas con tipo incorrecto (string en vez de number)
+db.carteras.insertOne({
+  _id: "TEST_coordenada_tipo",
+  nombre: "Coordenada como texto",
+  poligono: { type: "Polygon", coordinates: [[["0","0"],[10,0],[10,10],[0,10],[0,0]]] },
+  polizas_activas: 100,
+  suma_asegurada_usd: 18000000
+})
+
+// 4. Longitud fuera de rango
+db.carteras.insertOne({
+  _id: "TEST_fuera_de_rango",
+  nombre: "Longitud inválida",
+  poligono: { type: "Polygon", coordinates: [[[200,0],[210,0],[210,10],[200,10],[200,0]]] },
+  polizas_activas: 100,
+  suma_asegurada_usd: 18000000
+})
+
+// 5. Anillo con menos de 4 posiciones (sin cierre / mal formado)
+db.carteras.insertOne({
+  _id: "TEST_anillo_incompleto",
+  nombre: "Anillo mal formado",
+  poligono: { type: "Polygon", coordinates: [[[0,0],[10,0],[10,10]]] },
+  polizas_activas: 100,
+  suma_asegurada_usd: 18000000
+})
+```
+
+La primera es aceptada y las 4 siguientes son rechazadas por la cláusula
+correspondiente (`enum`, `bsonType`, `minimum`/`maximum`, `minItems`).
+
+## Evidencia — resultado real de los 5 casos (ejecutado en el Lab)
+
+| Caso | Resultado | Causa exacta |
+|---|---|---|
+| `TEST_zona_valida` | **Aceptado** (`insertedId` confirmado) | Polígono válido, cumple todas las reglas |
+| `TEST_type_incorrecto` | **Rechazado** (`code 121`) | `type: "Rectangle"` no está en `enum: ["Polygon"]` |
+| `TEST_coordenada_tipo` | **Rechazado** (`code 121`) | Coordenada `["0","0"]` como string, viola `bsonType: "number"` |
+| `TEST_fuera_de_rango` | **Rechazado** (`code 121`) | Longitud `200`/`210` excede el máximo `180` |
+| `TEST_anillo_incompleto` | **Rechazado** (`code 121`) | Anillo con solo 3 posiciones, viola `minItems: 4` |
+
+
+Después de las pruebas:
+
+```javascript
+db.carteras.deleteMany({ _id: /^TEST_/ })
+db.carteras.countDocuments({})
+```
+
+Dio como resultado **15**.
+
+---
+
+# Verificación del índice geoespacial
+
+## Decisión: un solo índice `2dsphere`
+
+El proyecto tiene dos geometrías: `eventos_desastres.ubicacion` (`Point`,
+5,393 documentos) y `carteras.poligono` (`Polygon`, 15 documentos). Se indexa **solo** `eventos_desastres.ubicacion`, porque:
+
+- Todas las consultas geoespaciales del proyecto (`$geoWithin`) filtran
+  `eventos_desastres` contra un polígono de zona literal — el motor
+  necesita evitar el `COLLSCAN` sobre el lado de 5,393 documentos.
+- `carteras` tiene solo 15 documentos. Escanearlos completos es
+  prácticamente gratis; un índice ahí no reduciría trabajo medible. Crear
+  ese índice sería indexar "porque existe la geometría", no porque una
+  consulta lo necesite 
+
+## Evidencia
+
+| Punto de la guía | Detalle |
+|---|---|
+| **1. Patrón y nombre del índice** | `{ ubicacion: "2dsphere" }`, nombre `idx_ubicacion_2dsphere` |
+| **2. Colección y campo geoespacial** | `eventos_desastres.ubicacion` |
+| **3. Consulta que pretende apoyar** | Consultas 1 y 3 de `02_medicion_inicial.md` (`$geoWithin` sobre las 15 zonas de `carteras`, ver también `04_comparacion_antes_despues.md` para la medición de impacto) |
+| **4. Documentos con geometría utilizable** | `db.eventos_desastres.countDocuments({ "ubicacion.type": "Point" })` → **5,393 de 5,393** (100%) |
+| **5. Resultado de `getIndexes()`** | Ver evidencia abajo |
+
+### `getIndexes()` — `eventos_desastres`
+
+```javascript
+[
+        { "v" : 2, "key" : { "_id" : 1 }, "name" : "_id_" },
+        {
+                "v" : 2,
+                "key" : { "categoria" : 1, "fecha_hora" : 1 },
+                "name" : "idx_categoria_fecha"
+        },
+        {
+                "v" : 2,
+                "key" : { "ubicacion" : "2dsphere" },
+                "name" : "idx_ubicacion_2dsphere",
+                "2dsphereIndexVersion" : 3
+        }
+]
+```
+
+Se conserva el índice convencional `idx_categoria_fecha` (semana 2) por
+separado del geoespacial `idx_ubicacion_2dsphere` — cada uno responde un
+patrón de consulta distinto (temporal vs. espacial), tal como pide la
+guía.
+
+## Impacto medido (referencia cruzada)
+
+El beneficio de este índice ya se midió con `explain()` antes/después en
+semana 2 (`04_comparacion_antes_despues.md`): redujo `totalDocsExamined`
+de 5,393 a 747 y 536 respectivamente en las consultas 1 y 3, sin cambiar
+`nReturned`. No se repite la medición aquí; se referencia como evidencia
+ya generada.
+
 
 
 
