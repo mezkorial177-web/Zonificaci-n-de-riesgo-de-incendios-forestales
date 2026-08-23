@@ -540,3 +540,18 @@ db.eventos_desastres.insertOne({
   fuente: { origen: "NASA EONET via Kaggle", id_original: "TEST_invalido_4" }
 })
 ```
+
+## Decisión de pertinencia geoespacial
+
+| Pregunta del problema | Entidad y geometría | Relación espacial | Decisión y justificación |
+|---|---|---|---|
+| ¿En qué zonas se concentra la actividad de incendios vs. tamaño de cartera? | Evento = `Point`; Zona = `Polygon` | Pertenencia | **Integrar.** Pregunta central del proyecto; requiere cruzar eventos con cartera por ubicación. |
+| ¿Qué zonas tienen mayor tasa de eventos por póliza activa? | Evento = `Point`; Zona = `Polygon` | Pertenencia | **Integrar.** Depende del resultado de la pregunta 1, agregado con `polizas_activas`. |
+| ¿Qué zonas con actividad significativa quedan fuera de la cartera? | Evento = `Point`; Zona = `Polygon` | Pertenencia (inversa) | **Integrar.** Variante de la pregunta 1: identifica eventos que no caen en ninguna zona de `carteras`. |
+
+**Decisión:** el componente geoespacial es pertinente y se integra,
+porque 3 de las 5 preguntas del proyecto dependen
+directamente de si un evento cae dentro del polígono de una zona. Las otras dos preguntas permanecen como un índice temporal.
+
+
+
