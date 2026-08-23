@@ -1080,3 +1080,92 @@ db.eventos_desastres.countDocuments({})
 ```
 
 Debe volver a dar **5,393**.
+
+# Semana 4 — Análisis temporal
+
+## 1. Fechas BSON Date: significado, granularidad, zona horaria
+
+| Aspecto | Detalle |
+|---|---|
+| Significado | `fecha_hora` representa el momento en que EONET detectó/reportó el evento — momento de detección, no necesariamente el inicio exacto del fenómeno físico. |
+| Granularidad | Segundo (`HH:MM:SS` en la fuente original). |
+| Zona horaria | UTC, preservada tal como la entrega EONET, sin conversión a hora local — evita ambigüedad entre eventos de distintas regiones del mundo. |
+| Campo derivado | `anio` (número), evita tener que extraer el año con `$year` en cada consulta que solo necesita ese nivel de agregación. |
+
+## 2. Consulta por intervalo `[inicio, fin)` + índice
+
+Ya resuelto en semana 2 (Consulta 2, `02_medicion_inicial.md`):
+`fecha_hora: { $gte: <inicio>, $lt: <fin> }`, indexada por
+`idx_categoria_fecha`. Evidencia de mejora antes/después en
+`04_comparacion_antes_despues.md`: el índice eliminó tanto el `COLLSCAN`
+como la etapa `SORT` (`totalKeysExamined = totalDocsExamined = nReturned`).
+
+## 3. Pipeline por periodo con indicador interpretable
+
+```javascript
+use riesgo_catastrofico
+
+db.eventos_desastres.aggregate([
+  { $match: { categoria: "Wildfires" } },
+  { $group: {
+      _id: { anio: { $year: "$fecha_hora" }, mes: { $month: "$fecha_hora" } },
+      eventos: { $sum: 1 }
+    }
+  },
+  { $sort: { "_id.anio": 1, "_id.mes": 1 } }
+])
+```
+
+### Resultado — eventos Wildfire por año-mes
+
+| Año-mes | Eventos | Año-mes | Eventos |
+|---|---|---|---|
+| 2022-06 | 1 | 2024-09 | 679 |
+| 2023-03 | 1 | 2024-10 | 332 |
+| 2023-08 | 14 | 2024-11 | 169 |
+| 2023-09 | 2 | 2024-12 | 223 |
+| 2023-10 | 1 | 2025-01 | 295 |
+| 2023-12 | 1 | 2025-02 | 185 |
+| 2024-02 | 5 | 2025-03 | 312 |
+| 2024-03 | 10 | 2025-04 | 213 |
+| 2024-04 | 12 | 2025-05 | 54 |
+| 2024-05 | 86 | 2025-06 | 98 |
+| 2024-06 | 557 | 2025-07 | 27 |
+| 2024-07 | 930 | | |
+| 2024-08 | **1,111** | | |
+
+**Nota de limpieza de datos:** la primera corrida de este pipeline
+mostró incorrectamente `(2024, mes 1): 3 eventos`, causado por 3
+documentos de control (`CTRL_dentro`, `CTRL_limite`, `CTRL_fuera`) de la
+sección 3.8 que no se habían limpiado de la colección. Se detectó por
+inconsistencia con el cálculo original (enero 2024 no debía tener
+eventos), se corrigió con `deleteMany({ _id: /^CTRL_/ })`, y se volvió a
+correr el pipeline — la tabla de arriba ya refleja los datos limpios.
+
+## 4. Prueba con fechas conocidas y conclusión
+
+```javascript
+db.eventos_desastres.aggregate([
+  { $match: {
+      categoria: "Wildfires",
+      fecha_hora: { $gte: ISODate("2024-08-01T00:00:00Z"), $lt: ISODate("2024-09-01T00:00:00Z") }
+    }
+  },
+  { $count: "eventos_agosto_2024" }
+])
+```
+
+**Resultado: `{ "eventos_agosto_2024" : 1111 }`** — coincide
+exactamente con la fila `(2024, 8)` del pipeline agrupado por periodo.
+Confirma que el `$group` por año-mes y el filtro directo por intervalo
+`[inicio, fin)` son consistentes entre sí sobre el mismo dato.
+
+**Conclusión breve:** la actividad de Wildfires en el dataset muestra
+estacionalidad clara dentro del año con mayor cobertura (2024): pico en
+junio-septiembre (557 → 930 → 1,111 → 679), consistente con la
+temporada de incendios del hemisferio norte, y una caída marcada en
+invierno. El análisis temporal sí aporta a las preguntas 3 y 4 del
+proyecto — confirma estacionalidad real, aunque la pregunta de
+tendencia interanual sigue limitada por la cobertura corta del dataset
+(2022-2025), como ya se documentó en `01_punto_partida.md`.
+
