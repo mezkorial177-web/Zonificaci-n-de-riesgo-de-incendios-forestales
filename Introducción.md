@@ -1059,10 +1059,8 @@ peligro (volcánico) que no corresponde al alcance del proyecto.
 
 ## 2. Consulta por intervalo `[inicio, fin)` + índice
 
-Ya resuelto en semana 2 (Consulta 2, `02_medicion_inicial.md`):
 `fecha_hora: { $gte: <inicio>, $lt: <fin> }`, indexada por
-`idx_categoria_fecha`. Evidencia de mejora antes/después en
-`04_comparacion_antes_despues.md`: el índice eliminó tanto el `COLLSCAN`
+`idx_categoria_fecha`. Evidencia de mejora antes/después: el índice eliminó tanto el `COLLSCAN`
 como la etapa `SORT` (`totalKeysExamined = totalDocsExamined = nReturned`).
 
 ## 3. Pipeline por periodo con indicador interpretable
@@ -1099,14 +1097,6 @@ db.eventos_desastres.aggregate([
 | 2024-07 | 930 | | |
 | 2024-08 | **1,111** | | |
 
-**Nota de limpieza de datos:** la primera corrida de este pipeline
-mostró incorrectamente `(2024, mes 1): 3 eventos`, causado por 3
-documentos de control (`CTRL_dentro`, `CTRL_limite`, `CTRL_fuera`) de la
-sección 3.8 que no se habían limpiado de la colección. Se detectó por
-inconsistencia con el cálculo original (enero 2024 no debía tener
-eventos), se corrigió con `deleteMany({ _id: /^CTRL_/ })`, y se volvió a
-correr el pipeline — la tabla de arriba ya refleja los datos limpios.
-
 ## 4. Prueba con fechas conocidas y conclusión
 
 ```javascript
@@ -1125,16 +1115,16 @@ exactamente con la fila `(2024, 8)` del pipeline agrupado por periodo.
 Confirma que el `$group` por año-mes y el filtro directo por intervalo
 `[inicio, fin)` son consistentes entre sí sobre el mismo dato.
 
-**Conclusión breve:** la actividad de Wildfires en el dataset muestra
+**Conclusión:** la actividad de Wildfires en el dataset muestra
 estacionalidad clara dentro del año con mayor cobertura (2024): pico en
 junio-septiembre (557 → 930 → 1,111 → 679), consistente con la
 temporada de incendios del hemisferio norte, y una caída marcada en
 invierno. El análisis temporal sí aporta a las preguntas 3 y 4 del
 proyecto — confirma estacionalidad real, aunque la pregunta de
 tendencia interanual sigue limitada por la cobertura corta del dataset
-(2022-2025), como ya se documentó en `01_punto_partida.md`.
+(2022-2025).
 
-# Semana 5 — Búsqueda, seguridad y privacidad
+# Búsqueda, seguridad y privacidad
 
 ## Decisión sobre búsqueda (`$text` / regex)
 
@@ -1143,10 +1133,7 @@ patrones dentro de `titulo`/`descripcion` — todas se responden con
 igualdad, rango de fechas o pertenencia geoespacial sobre campos
 estructurados. **No se integra `$text`/regex como componente
 especializado.** El proyecto ya tiene dos componentes pertinentes
-(geoespacial en semana 3, temporal en semana 4); agregar un tercero sin
-una pregunta que lo sustente repetiría el error que la guía ya advirtió
-para geometría en semana 3 ("no incorporar todas las técnicas de forma
-artificial").
+(geoespacial y temporal).
 
 ## Clasificación de datos
 
@@ -1166,7 +1153,7 @@ db.createView("carteras_publica", "carteras", [
 ])
 ```
 
-### Evidencia — comparación lado a lado
+### Evidencia
 
 ```javascript
 db.carteras_publica.findOne()
@@ -1195,7 +1182,7 @@ db.carteras.findOne()
 }
 ```
 
-Confirmado: `carteras_publica` oculta `poligono`, `polizas_activas` y
+Resuktado: `carteras_publica` oculta `poligono`, `polizas_activas` y
 `suma_asegurada_usd` — exactamente los campos clasificados como interno
 y sensible.
 
