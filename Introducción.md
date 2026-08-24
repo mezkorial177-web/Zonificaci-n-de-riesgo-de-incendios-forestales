@@ -1,4 +1,6 @@
 # Zonificación de riesgo de incendios forestales para apoyo a suscripción de seguros de propiedad
+> Metmellali Korial Espitia Santiago
+> Jesus Eduardo Patiño Martinez
 
 ---
 
