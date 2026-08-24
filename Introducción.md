@@ -745,7 +745,7 @@ El proyecto tiene dos geometrías: `eventos_desastres.ubicacion` (`Point`,
 |---|---|
 | **1. Patrón y nombre del índice** | `{ ubicacion: "2dsphere" }`, nombre `idx_ubicacion_2dsphere` |
 | **2. Colección y campo geoespacial** | `eventos_desastres.ubicacion` |
-| **3. Consulta que pretende apoyar** | Consultas 1 y 3 de `02_medicion_inicial.md` (`$geoWithin` sobre las 15 zonas de `carteras`, ver también `04_comparacion_antes_despues.md` para la medición de impacto) |
+| **3. Consulta que pretende apoyar** | Consultas 1 y 3 (`$geoWithin` sobre las 15 zonas de `carteras`) |
 | **4. Documentos con geometría utilizable** | `db.eventos_desastres.countDocuments({ "ubicacion.type": "Point" })` → **5,393 de 5,393** (100%) |
 | **5. Resultado de `getIndexes()`** | Ver evidencia abajo |
 
@@ -768,15 +768,13 @@ El proyecto tiene dos geometrías: `eventos_desastres.ubicacion` (`Point`,
 ]
 ```
 
-Se conserva el índice convencional `idx_categoria_fecha` (semana 2) por
+Se conserva el índice convencional `idx_categoria_fecha` por
 separado del geoespacial `idx_ubicacion_2dsphere` — cada uno responde un
-patrón de consulta distinto (temporal vs. espacial), tal como pide la
-guía.
+patrón de consulta distinto (temporal vs. espacial).
 
 ## Impacto medido (referencia cruzada)
 
-El beneficio de este índice ya se midió con `explain()` antes/después en
-semana 2 (`04_comparacion_antes_despues.md`): redujo `totalDocsExamined`
+El beneficio de este índice ya se midió con `explain()` antes/después: redujo `totalDocsExamined`
 de 5,393 a 747 y 536 respectivamente en las consultas 1 y 3, sin cambiar
 `nReturned`. No se repite la medición aquí; se referencia como evidencia
 ya generada.
@@ -803,7 +801,7 @@ contra `carteras.poligono`.
 
 ## Construcción progresiva
 
-### Paso 1 — solo selección espacial (sin filtro temático)
+### Paso 1 — solo selección espacial
 
 ```javascript
 db.eventos_desastres.find({
@@ -871,7 +869,7 @@ celda de rejilla, mientras que `$geoWithin` evalúa contención geométrica
 real contra el polígono — una discrepancia de borde esperable, no un
 error de datos.
 
-## Interpretación (respuesta preliminar a la pregunta 5)
+## Interpretación (respuesta a la pregunta 5)
 
 1,420 eventos históricos de wildfire (27% del total) ocurrieron fuera
 de cualquier zona actualmente cubierta por la cartera sintética. En
@@ -931,7 +929,7 @@ tabla.sort((a, b) => b.tasa_eventos_por_poliza - a.tasa_eventos_por_poliza);
 printjson(tabla);
 ```
 
-## Resultado — 15 zonas ordenadas por tasa (no por conteo bruto)
+## Resultado — 15 zonas ordenadas por tasa
 
 | Zona | Región | Eventos | Pólizas activas | Tasa evento/póliza |
 |---|---|---|---|---|
@@ -951,40 +949,24 @@ printjson(tabla);
 | zona_14 | Siberia/Mongolia | 129 | 1,671 | 0.0772 |
 | zona_15 | EUA costa oeste (Pacífico) | 127 | 2,258 | 0.0562 |
 
-## Interpretación y límite (tabla de la guía)
+## Interpretación y límite
 
 | Pregunta | Operador y referencia | Selección | Resultado | Interpretación y límite |
 |---|---|---|---|---|
 | ¿Qué zonas tienen mayor tasa de eventos por póliza activa? | `$geoWithin` por zona dentro de `$facet`, sobre los 15 polígonos de `carteras` | 5,318 eventos Wildfire evaluados contra 15 polígonos | zona_01 (0.5858) es la de mayor tasa; zona_15 (0.0562) la menor | El **orden por tasa difiere del orden por conteo bruto**: zona_03 (377 eventos) supera a zona_02 (392 eventos) en tasa, porque tiene menos exposición asegurada (905 vs 1,046 pólizas). Esto confirma que un conteo crudo no es una tasa. **Límite:** la exposición (`polizas_activas`) es sintética y se generó de forma inversamente proporcional al conteo histórico de eventos — parte de esta correlación está incorporada por diseño en los datos, no es un hallazgo totalmente independiente. En un proyecto con exposición real, este análisis se repetiría igual, pero la interpretación de "por qué" cada zona tiene su nivel de exposición vendría de decisiones reales de suscripción, no de una fórmula. |
 
-## Nota de transparencia (importante para la presentación)
-
-La fórmula de `generate_carteras.py` construyó `polizas_activas` con una
-relación inversa al conteo histórico de eventos (supuesto de negocio:
-"zonas de mayor siniestralidad → suscripción más restrictiva"). Esto
-significa que el hallazgo "la tasa reordena el ranking respecto al
-conteo bruto" está parcialmente **incorporado por construcción** en los
-datos sintéticos, no es un patrón descubierto de forma independiente.
-Se documenta aquí explícitamente para no presentar como "hallazgo" algo
-que en parte es consecuencia del diseño de los datos de prueba — la
-misma exigencia de honestidad que ya aplicamos al corregir la pregunta
-3 sobre tendencia temporal.
-
 # Casos de control
-
-**Zona de referencia:** `zona_01`, polígono
-`[[[15,-15],[30,-15],[30,0],[15,0],[15,-15]]]`
 
 ## Casos preparados
 
 | Caso | _id de control | Coordenada | Qué prueba |
 |---|---|---|---|
 | 1 | `CTRL_dentro` | `[20, -5]` | Punto claramente dentro del polígono |
-| 2 | `CTRL_fuera` | `[50, 60]` | Punto claramente fuera (norte de Europa/Rusia) |
+| 2 | `CTRL_fuera` | `[50, 60]` | Punto claramente fuera  |
 | 3 | `CTRL_limite` | `[15, -8]` | Longitud exactamente sobre el borde del polígono |
 | 4 | (evento real) | — | Ubicación dentro de la zona que **no** satisface el filtro temático (`categoria: "Wildfires"`) |
 
-## Consulta o pipeline exacto
+## Consulta
 
 ```javascript
 const zona01 = { type: "Polygon", coordinates: [[[15,-15],[30,-15],[30,0],[15,0],[15,-15]]] };
@@ -1016,9 +998,7 @@ db.eventos_desastres.find({
 
 ## Índice disponible
 
-`idx_ubicacion_2dsphere` sobre `eventos_desastres.ubicacion` (ver
-`09_verificacion_indice_geoespacial.md`).
-
+`idx_ubicacion_2dsphere` sobre `eventos_desastres.ubicacion`.
 ## Documentos incluidos y excluidos — resultado
 
 | Caso | Resultado | Documentos incluidos/excluidos |
@@ -1044,13 +1024,11 @@ justo sobre esa línea podría contarse en ambas si se consultan por
 separado, o solo en la primera evaluada dentro de un `$facet`. En
 nuestro caso las 15 zonas no son colindantes entre sí (hay huecos entre
 las celdas de la rejilla), así que esta ambigüedad no afecta los
-resultados ya calculados en 3.7, pero se documenta como comportamiento
+resultados ya calculados, pero se documenta como comportamiento
 del motor a considerar si el proyecto creciera a zonas adyacentes.
 
-**Caso 4** confirma, con un documento real (no un punto inventado), el
-hallazgo indirecto que ya habíamos visto en 3.6 (622 eventos totales vs.
-621 Wildfires en zona_01): el evento adicional es un volcán en la
-República Democrática del Congo, geográficamente dentro del rectángulo
+**Caso 4** confirma, con un documento real (no un punto inventado), (622 eventos totales vs.
+621 Wildfires en zona_01): el evento adicional es un volcán, geográficamente dentro del rectángulo
 de zona_01 pero de una categoría distinta a la que analiza el proyecto.
 Confirma que el filtro temático (`categoria: "Wildfires"`) sí está
 haciendo su trabajo — sin él, el análisis de zona_01 incluiría un
@@ -1068,16 +1046,7 @@ peligro (volcánico) que no corresponde al alcance del proyecto.
   donde el borde podría coincidir con un límite estatal o de código
   postal.
 
-## Limpieza de documentos de control
-
-```javascript
-db.eventos_desastres.deleteMany({ _id: /^CTRL_/ })
-db.eventos_desastres.countDocuments({})
-```
-
-Debe volver a dar **5,393**.
-
-# Semana 4 — Análisis temporal
+# Análisis temporal
 
 ## 1. Fechas BSON Date: significado, granularidad, zona horaria
 
