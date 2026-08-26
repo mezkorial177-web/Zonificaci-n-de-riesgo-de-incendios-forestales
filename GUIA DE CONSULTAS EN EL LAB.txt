@@ -1,0 +1,82 @@
+cd ~
+git clone https://github.com/mezkorial177-web/Zonificaci-n-de-riesgo-de-incendios-forestales.git proyecto-final
+cd proyecto-final
+ls
+
+mongosh
+mongoimport --db riesgo_catastrofico --collection eventos_desastres --file eventos_desastres.json --jsonArray --drop
+mongoimport --db riesgo_catastrofico --collection carteras --file carteras.json --jsonArray --drop
+
+
+
+use riesgo_catastrofico
+
+// ===== PUNTO 1: Carga/preparación de datos =====
+print("--- PUNTO 1: Carga de datos ---")
+db.eventos_desastres.countDocuments({})   // esperado: 5393
+db.carteras.countDocuments({})            // esperado: 15
+
+// ===== PUNTO 2: Consultas/pipelines principales =====
+print("--- PUNTO 2: Consulta principal (pregunta 1) ---")
+db.eventos_desastres.find({
+  categoria: "Wildfires",
+  ubicacion: { $geoWithin: { $geometry: { type: "Polygon", coordinates: [[[15,-15],[30,-15],[30,0],[15,0],[15,-15]]] } } }
+}).count()   // esperado: 621
+
+// ===== PUNTO 3: Validador con un caso válido y uno inválido =====
+print("--- PUNTO 3: Validador ---")
+const validadorEventos = {
+  $jsonSchema: {
+    bsonType: "object",
+    required: ["_id", "titulo", "categoria", "fecha_hora", "anio", "ubicacion", "fuente"],
+    properties: {
+      categoria: { bsonType: "string", enum: ["Wildfires", "Severe Storms", "Volcanoes", "Sea and Lake Ice"] },
+      fecha_hora: { bsonType: "date" }
+    }
+  }
+};
+db.runCommand({ collMod: "eventos_desastres", validator: validadorEventos, validationLevel: "moderate" })
+
+// Caso válido
+db.eventos_desastres.insertOne({
+  _id: "INTEGRACION_valido", titulo: "Prueba integración válida", categoria: "Wildfires",
+  fecha_hora: new Date(), anio: 2026,
+  ubicacion: { type: "Point", coordinates: [-100, 35] },
+  fuente: { origen: "Prueba integración", id_original: "INTEGRACION_valido" }
+})
+
+// Caso inválido (categoría fuera de dominio)
+db.eventos_desastres.insertOne({
+  _id: "INTEGRACION_invalido", titulo: "Prueba integración inválida", categoria: "Terremoto",
+  fecha_hora: new Date(), anio: 2026,
+  ubicacion: { type: "Point", coordinates: [-100, 35] },
+  fuente: { origen: "Prueba integración", id_original: "INTEGRACION_invalido" }
+})
+// Este último DEBE fallar con "Document failed validation"
+
+// ===== PUNTO 4: Índices con getIndexes() y explain() =====
+print("--- PUNTO 4: Índices ---")
+db.eventos_desastres.createIndex({ categoria: 1, fecha_hora: 1 }, { name: "idx_categoria_fecha" })
+db.eventos_desastres.createIndex({ ubicacion: "2dsphere" }, { name: "idx_ubicacion_2dsphere" })
+db.eventos_desastres.getIndexes()
+
+db.eventos_desastres.find({ categoria: "Wildfires", fecha_hora: { $gte: ISODate("2024-01-01T00:00:00Z"), $lt: ISODate("2025-01-01T00:00:00Z") } }).explain("executionStats").executionStats.executionStages.stage
+// esperado: "FETCH" (no "COLLSCAN")
+
+// ===== PUNTO 5: Componente especializado (geoespacial + temporal) =====
+print("--- PUNTO 5: Componente especializado ---")
+db.eventos_desastres.aggregate([
+  { $match: { categoria: "Wildfires", fecha_hora: { $gte: ISODate("2024-08-01T00:00:00Z"), $lt: ISODate("2024-09-01T00:00:00Z") } } },
+  { $count: "eventos_agosto_2024" }
+])   // esperado: 1111
+
+// ===== PUNTO 6: Salida protegida/minimizada para rol de consulta =====
+print("--- PUNTO 6: Vista minimizada ---")
+db.createView("carteras_publica", "carteras", [
+  { $project: { _id: 1, nombre: 1, eventos_wildfire_historicos: 1 } }
+])
+db.carteras_publica.findOne()   // sin polizas_activas ni suma_asegurada_usd
+
+// ===== LIMPIEZA de documentos de prueba =====
+db.eventos_desastres.deleteMany({ _id: /^INTEGRACION_/ })
+db.eventos_desastres.countDocuments({})   // debe volver a 5393
